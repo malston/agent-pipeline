@@ -31,6 +31,18 @@ def test_build_model_honors_model_id_override(monkeypatch):
     assert build_model().model == "claude-opus-4-8"
 
 
+def test_build_model_treats_blank_model_id_as_default(monkeypatch):
+    # A blank MODEL_ID (e.g. `MODEL_ID=` in a .env) means "unset", not an empty id
+    # that init_chat_model would choke on.
+    monkeypatch.delenv("MODEL_TEMPERATURE", raising=False)
+    from agent_pipeline.model import build_model
+    from agent_pipeline.config import DEFAULT_MODEL_ID
+
+    for blank in ("", "   "):
+        monkeypatch.setenv("MODEL_ID", blank)
+        assert DEFAULT_MODEL_ID.endswith(build_model().model)
+
+
 def test_build_model_forwards_temperature_when_set(monkeypatch):
     # A non-zero value proves the env string is parsed and forwarded, not defaulted.
     monkeypatch.delenv("MODEL_ID", raising=False)

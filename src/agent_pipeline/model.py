@@ -15,7 +15,8 @@ from agent_pipeline.config import DEFAULT_MODEL_ID
 
 
 def build_model() -> BaseChatModel:
-    model_id = os.getenv("MODEL_ID", DEFAULT_MODEL_ID)
+    # A blank/whitespace MODEL_ID (e.g. `MODEL_ID=` in a .env) counts as unset.
+    model_id = (os.getenv("MODEL_ID") or "").strip() or DEFAULT_MODEL_ID
     kwargs: dict[str, float] = {}
     # claude-sonnet-5 returns HTTP 400 ("`temperature` is deprecated for this model")
     # for a non-default temperature, so forward it only when MODEL_TEMPERATURE is
