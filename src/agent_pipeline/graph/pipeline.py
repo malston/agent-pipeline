@@ -1,8 +1,9 @@
 """The Pipeline topology as a LangGraph StateGraph.
 
-Currently A1 -> A2; A3/A4 attach as further nodes with translator edges. The
-checkpointer persists each stage's validated output so a downstream failure
-resumes from the last good contract instead of re-running the pipeline.
+The graph runs A1 -> A2. Downstream agents attach as further nodes joined by
+translator edges. The checkpointer persists each stage's validated output so a
+downstream failure resumes from the last good contract instead of re-running the
+pipeline.
 """
 from typing import TypedDict
 
@@ -29,8 +30,14 @@ def build_graph(retriever: A1Retriever, analyst: A2Analyst, checkpointer=None):
         return {"retrieval": retriever.run(state["request"])}
 
     def analyst_node(state: PipelineState) -> dict:
+        bundle = state["retrieval"]
+        if bundle is None:
+            raise ValueError(
+                "analyst_node reached with no retrieval bundle; "
+                "A1 did not populate state['retrieval']"
+            )
         # Context Translation on the A1 -> A2 boundary.
-        analyst_input = translate_retrieval_to_analysis(state["retrieval"])
+        analyst_input = translate_retrieval_to_analysis(bundle)
         return {"analysis": analyst.run(analyst_input)}
 
     graph = StateGraph(PipelineState)

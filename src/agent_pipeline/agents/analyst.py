@@ -3,7 +3,7 @@
 The analyst reasons over the evidence pool A1 handed it and emits evidence-bound
 findings. Two analysts share one seam:
 
-* ``RuleBasedAnalyst`` -- keyless, deterministic baseline; treats each evidence
+* ``RuleBasedAnalyst`` -- keyless, deterministic stand-in; treats each evidence
   item as a finding citing itself. Lets the agent run with no provider.
 * ``LLMAnalyst`` -- provider-agnostic (build_model seam); the real Model. Needs a
   provider key, so it is exercised only by the gated end-to-end test.
@@ -41,15 +41,13 @@ class Analyst(Protocol):
 
 
 class RuleBasedAnalyst:
-    """Keyless baseline: each evidence item becomes a finding citing itself."""
+    """Keyless stand-in: each evidence item becomes a finding citing itself."""
 
     def analyze(self, analyst_input: AnalystInput) -> AnalysisPlan:
+        # The claim is the evidence verbatim, so it is trivially fully supported:
+        # confidence 1.0. This stand-in does no real scoring.
         findings = [
-            Finding(
-                claim=item.text,
-                evidence=[item.id],
-                confidence=analyst_input.retrieval_confidence,
-            )
+            Finding(claim=item.text, evidence=[item.id], confidence=1.0)
             for item in analyst_input.evidence_pool
         ]
         gaps = [] if findings else ["no evidence retrieved for the question"]
@@ -67,10 +65,9 @@ class LLMAnalyst:
         "You are the analyst in a RAG pipeline. Given a question and a pool of "
         "evidence (each with an id), extract findings: each finding is a claim with "
         "the evidence ids that support it (cite ONLY ids present in the pool) and a "
-        "confidence in [0,1]. List gaps the evidence cannot answer. Produce a plan "
-        "whose steps use ONLY these tools: search_knowledge, get_source, "
-        "save_scratch, load_scratch, emit_contract. The final step MUST be "
-        "emit_contract."
+        "confidence in [0,1]. List gaps the evidence cannot answer. You analyze the "
+        "given evidence only -- you have no retrieval tools. Produce a plan whose "
+        "single step uses the tool emit_contract."
     )
 
     def __init__(self, model: BaseChatModel | None = None) -> None:
@@ -106,4 +103,6 @@ class A2Analyst:
                 )
                 validate_analysis_output(report, evidence_ids)  # guardrail
                 return report
+        # Unreachable: validate_plan guarantees a terminal emit_contract. Defensive
+        # backstop so a future weakening of that guard fails loudly, not silently.
         raise GuardrailViolation("NO_EMIT", "plan executed without emitting a contract")

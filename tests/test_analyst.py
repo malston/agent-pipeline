@@ -34,6 +34,41 @@ def test_rule_based_analyst_emits_plan_ending_in_emit(_input=_input):
     assert plan.steps[-1].tool == "emit_contract"
 
 
+def test_rule_based_analyst_scores_verbatim_echo_with_full_confidence():
+    # The baseline echoes each evidence item as its own claim, so the claim is
+    # trivially fully supported -- confidence is 1.0, not the retrieval coverage.
+    plan = RuleBasedAnalyst().analyze(_input())
+    assert plan.findings and all(f.confidence == 1.0 for f in plan.findings)
+
+
+def test_a2_handles_empty_evidence_pool():
+    empty = AnalystInput(
+        request_id="r1", question="q", evidence_pool=[], retrieval_confidence=0.0
+    )
+    report = A2Analyst(RuleBasedAnalyst()).run(empty)
+    assert report.findings == []
+    assert report.gaps  # a "no evidence" gap is recorded rather than a silent empty
+
+
+def test_a2_rejects_plan_using_ungranted_retrieval_tool():
+    # A2 analyzes the pool it is given; it is not granted retrieval tools, so a
+    # plan that calls one is rejected loudly rather than silently ignored.
+    class _RetrievingAnalyst:
+        def analyze(self, analyst_input: AnalystInput) -> AnalysisPlan:
+            return AnalysisPlan(
+                steps=[
+                    PlanStep(step_id=0, intent="retrieve", tool="search_knowledge"),
+                    PlanStep(step_id=1, intent="emit", tool="emit_contract"),
+                ],
+                findings=[Finding(claim="c", evidence=["mito"], confidence=0.5)],
+                gaps=[],
+            )
+
+    with pytest.raises(GuardrailViolation) as exc:
+        A2Analyst(_RetrievingAnalyst()).run(_input())
+    assert exc.value.code == "TOOL_NOT_GRANTED"
+
+
 def test_a2_produces_grounded_report_end_to_end():
     report = A2Analyst(RuleBasedAnalyst()).run(_input())
 

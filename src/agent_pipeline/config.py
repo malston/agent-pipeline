@@ -27,15 +27,12 @@ A1_TOOL_GRANT = {
 
 A1_MAX_PLAN_STEPS = 6
 
-# A2 Analyst's Context Boundary: it reasons over the evidence pool (and may retrieve
-# more); it does not judge claim support (that is A4's `check_claim`).
-A2_TOOL_GRANT = {
-    "search_knowledge",
-    "get_source",
-    "save_scratch",
-    "load_scratch",
-    "emit_contract",
-}
+# A2 Analyst's Context Boundary: it reasons over the evidence pool it is given and
+# emits. It does not retrieve more evidence (a future enhancement would add
+# search_knowledge/get_source) nor judge claim support (that is A4's `check_claim`).
+# The grant lists only tools the executor honors, so a planned retrieval step is
+# rejected loudly rather than silently ignored.
+A2_TOOL_GRANT = {"emit_contract"}
 
 A2_MAX_PLAN_STEPS = 6
 

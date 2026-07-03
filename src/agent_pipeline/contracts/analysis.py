@@ -25,7 +25,7 @@ class AnalystInput(BaseModel):
 class Finding(BaseModel):
     """A claim the analyst extracted, bound to the evidence that supports it."""
 
-    claim: str
+    claim: str = Field(min_length=1)
     evidence: list[str] = Field(min_length=1)  # source ids; a claim must cite one
     confidence: float = Field(ge=0.0, le=1.0)
 

@@ -19,6 +19,16 @@ def test_finding_rejects_confidence_above_one():
         Finding(claim="c", evidence=["s1"], confidence=1.5)
 
 
+def test_finding_rejects_confidence_below_zero():
+    with pytest.raises(ValidationError):
+        Finding(claim="c", evidence=["s1"], confidence=-0.1)
+
+
+def test_finding_rejects_empty_claim():
+    with pytest.raises(ValidationError):
+        Finding(claim="", evidence=["s1"], confidence=0.9)
+
+
 def test_analysis_report_allows_no_findings_with_gaps():
     report = AnalysisReport(request_id="r1", findings=[], gaps=["no evidence on X"])
     assert report.findings == []
