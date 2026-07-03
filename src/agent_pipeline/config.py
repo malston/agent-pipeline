@@ -16,16 +16,25 @@ TOOL_CATALOG = {
 }
 
 # A1 Retriever's Context Boundary: it retrieves and hands off; it does not judge
-# claims (that is A4's grant).
+# claims (that is A4's grant). The grant lists only tools the executor actually
+# honors, so a planned tool it cannot run is rejected loudly (TOOL_NOT_GRANTED)
+# rather than silently skipped.
 A1_TOOL_GRANT = {
     "search_knowledge",
-    "get_source",
     "save_scratch",
-    "load_scratch",
     "emit_contract",
 }
 
 A1_MAX_PLAN_STEPS = 6
+
+# A2 Analyst's Context Boundary: it reasons over the evidence pool it is given and
+# emits. It does not retrieve more evidence (a future enhancement would add
+# search_knowledge/get_source) nor judge claim support (that is A4's `check_claim`).
+# The grant lists only tools the executor honors, so a planned retrieval step is
+# rejected loudly rather than silently ignored.
+A2_TOOL_GRANT = {"emit_contract"}
+
+A2_MAX_PLAN_STEPS = 6
 
 # Default provider-agnostic Model id ("provider:model" for init_chat_model).
 # The single source of truth for the default; build_model() applies the MODEL_ID
