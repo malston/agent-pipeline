@@ -18,7 +18,9 @@ anthropic = ["langchain-anthropic"]
 tracing = ["langsmith"]
 
 [dependency-groups]
-dev = ["pytest>=8"]
+# langchain-anthropic is a runtime optional-dependency, but the model tests
+# exercise the real anthropic build_model() path, so the test env always needs it.
+dev = ["pytest>=8", "langchain-anthropic"]
 
 [build-system]
 requires = ["hatchling"]
