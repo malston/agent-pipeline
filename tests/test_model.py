@@ -60,15 +60,21 @@ def test_build_model_rejects_malformed_temperature_descriptively(monkeypatch):
         build_model()
 
 
-def test_llm_planner_accepts_injected_model():
-    # LLMPlanner receives the model via the seam; it does not build its own.
-    # Wrapping is a pure bind, so it constructs offline.
+def test_llm_planner_uses_injected_model_without_calling_factory(monkeypatch):
+    # Prove the injected model is actually used: a tripwire makes the factory
+    # fallback fail loudly, so this passes only if LLMPlanner honors the argument
+    # instead of quietly building its own.
     from agent_pipeline.model import build_model
-    from agent_pipeline.agents.retriever import LLMPlanner
+    from agent_pipeline.agents import retriever
 
     injected = build_model()
-    planner = LLMPlanner(model=injected)
-    assert planner._model is not None  # the injected model was wired in
+
+    def _factory_must_not_run():
+        raise AssertionError("build_model() must not run when a model is injected")
+
+    monkeypatch.setattr(retriever, "build_model", _factory_must_not_run)
+    planner = retriever.LLMPlanner(model=injected)
+    assert planner._model is not None
 
 
 def test_llm_planner_defaults_to_build_model():
