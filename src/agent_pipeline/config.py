@@ -3,7 +3,6 @@
 Nothing in this module contains agent reasoning; it only names the knobs the
 Harness turns (model id, tool grants, step budgets).
 """
-import os
 
 # The single tool catalog the Harness exposes to the Model (ADD: ~6 tools).
 # Each agent's Harness grants only the subset inside its Context Boundary.
@@ -28,6 +27,7 @@ A1_TOOL_GRANT = {
 
 A1_MAX_PLAN_STEPS = 6
 
-# Provider-agnostic Model id, consumed by init_chat_model ("provider:model").
-# Overridable by env; only used on the LLM-backed path (needs a provider key).
-DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "anthropic:claude-haiku-4-5-20251001")
+# Default provider-agnostic Model id ("provider:model" for init_chat_model).
+# The single source of truth for the default; build_model() applies the MODEL_ID
+# env override at call time. Shared across agents; reasoning-capable by default.
+DEFAULT_MODEL_ID = "anthropic:claude-sonnet-5"

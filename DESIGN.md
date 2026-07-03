@@ -278,10 +278,14 @@ The Model sits behind LangChain's chat-model interface so it can be swapped by c
 without touching Harness code:
 
 ```python
-# One place defines the Model; every agent receives it by injection.
-model = init_chat_model(settings.MODEL_ID, temperature=0)   # e.g. claude / gpt / gemini
+# One place defines the Model (model.py: build_model()); every agent receives it by
+# injection. build_model() reads MODEL_ID (default DEFAULT_MODEL_ID) at call time.
+model = init_chat_model(settings.MODEL_ID)   # e.g. anthropic:claude-sonnet-5 / gpt / gemini
+# NOTE: no default temperature. Current Claude models (e.g. claude-sonnet-5) reject a
+# non-default temperature with HTTP 400 ("`temperature` is deprecated for this model"),
+# so build_model() forwards temperature only when MODEL_TEMPERATURE is explicitly set.
 # Structured output binds a contract to the Model's response:
-planner = model.with_structured_output(Plan)
+planner = model.with_structured_output(RetrievalPlan)
 emitter = model.with_structured_output(AnalysisReport)   # per-agent outgoing contract
 ```
 
