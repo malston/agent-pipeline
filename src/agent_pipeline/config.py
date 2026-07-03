@@ -36,6 +36,13 @@ A2_TOOL_GRANT = {"emit_contract"}
 
 A2_MAX_PLAN_STEPS = 6
 
+# A3 Composer's Context Boundary: it composes a draft from the points it is given
+# and emits. It does not retrieve or judge; its only tool is the hand-off. (Style
+# exemplars via retrieval would be a future enhancement adding search_knowledge.)
+A3_TOOL_GRANT = {"emit_contract"}
+
+A3_MAX_PLAN_STEPS = 6
+
 # Default provider-agnostic Model id ("provider:model" for init_chat_model).
 # The single source of truth for the default; build_model() applies the MODEL_ID
 # env override at call time. Shared across agents; reasoning-capable by default.

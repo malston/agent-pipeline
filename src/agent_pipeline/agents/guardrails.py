@@ -5,6 +5,7 @@ A ``GuardrailViolation`` is a typed, traceable failure -- never a silent pass.
 from agent_pipeline.agents.plan import Plan
 from agent_pipeline.contracts.retrieval import RetrievalBundle
 from agent_pipeline.contracts.analysis import AnalysisReport
+from agent_pipeline.contracts.composition import Draft
 
 TERMINAL_TOOL = "emit_contract"
 
@@ -59,4 +60,23 @@ def validate_analysis_output(
                 raise GuardrailViolation(
                     "UNGROUNDED_FINDING",
                     f"finding cites evidence '{source_id}' not in the input pool",
+                )
+
+
+def validate_composition_output(
+    draft: Draft, available_sources: set[str]
+) -> None:
+    """Reject a draft whose sections cite sources not available to the composer, or
+    that composed nothing from a non-empty point set (an empty input legitimately
+    yields an empty draft, so the check is conditional on there being sources)."""
+    if available_sources and not draft.sections:
+        raise GuardrailViolation(
+            "EMPTY_DRAFT", "no sections composed from a non-empty point set"
+        )
+    for section in draft.sections:
+        for source_id in section.cited_sources:
+            if source_id not in available_sources:
+                raise GuardrailViolation(
+                    "UNGROUNDED_SECTION",
+                    f"section cites source '{source_id}' not available to compose from",
                 )

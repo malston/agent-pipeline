@@ -193,6 +193,32 @@ Each edge (A1→A2, A2→A3, A3→A4) has its own translator. Because contracts 
 translators are explicit, a producer-side rename never silently breaks the consumer — it
 breaks the translator's tests instead.
 
+### Integration boundary: why in-process, not A2A
+
+The agents talk to each other **in-process**: they are nodes of one LangGraph `StateGraph`,
+and a boundary is a function call passing a validated Pydantic contract through a translator.
+We deliberately do **not** use the A2A wire protocol (the ADD integration layer's horizontal
+option) for these edges.
+
+A2A earns its cost when agents are _distributed or independently owned_ — separate
+deployments, cross-framework/polyglot agents, dynamic capability discovery via Agent Cards,
+or trust boundaries between parties. It brings HTTP transport, a task lifecycle, artifacts,
+and per-hop auth to solve those problems. This pipeline has none of them: four agents, one
+process, one framework, one team, a static sequence. A2A here would wrap the same typed
+contracts in a heavier envelope and duplicate orchestration LangGraph already provides — for
+zero functional gain.
+
+Crucially, we already keep A2A's one load-bearing idea for free: **agents are opaque to each
+other**, exchanging only typed contracts and never reaching into another's memory, tools, or
+prompt. That is the property that matters, realized at function-call cost.
+
+**When to introduce A2A** — it is a _per-edge_ decision, not all-or-nothing. Adopt it on the
+specific edge that first crosses a process, org, or vendor line (e.g. a stage becomes an
+independently-scaled service, or A4 delegates to a third-party validator). Because the
+boundaries are already clean, the migration is mechanical: each contract → an A2A
+artifact/`DataPart` schema, each translator → the boundary adapter, each agent's `run()` → a
+`/tasks/send` handler. Deferring A2A costs nothing today and forecloses nothing later.
+
 ---
 
 ## 5. The six tools
