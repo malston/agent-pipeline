@@ -28,9 +28,18 @@ def _metadata_filter(
 class KnowledgeStore:
     def __init__(self, embeddings: Embeddings) -> None:
         self._store = InMemoryVectorStore(embeddings)
+        self._ids: set[str] = set()
 
     def index(self, documents: list[Document]) -> None:
         self._store.add_documents(documents)
+        self._ids.update(d.id for d in documents)
+
+    def known_ids(self) -> set[str]:
+        return set(self._ids)
+
+    def get(self, source_id: str) -> Document | None:
+        """Backs the ``get_source`` tool: fetch a full indexed document by id."""
+        return self._store.get_by_ids([source_id])[0] if source_id in self._ids else None
 
     def search(
         self,
