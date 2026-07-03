@@ -27,7 +27,9 @@ class Section(BaseModel):
 
     heading: str = Field(min_length=1)
     body: str = Field(min_length=1)
-    cited_sources: list[str] = []  # source ids
+    # source ids; may be empty on purpose -- intro/gaps sections cite nothing (unlike
+    # Finding.evidence, a section carries no obligation to cite)
+    cited_sources: list[str] = []
 
 
 class Draft(BaseModel):
@@ -35,4 +37,4 @@ class Draft(BaseModel):
 
     request_id: str
     sections: list[Section]
-    style_profile: str
+    style_profile: str = Field(min_length=1)

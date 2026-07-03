@@ -66,7 +66,13 @@ def validate_analysis_output(
 def validate_composition_output(
     draft: Draft, available_sources: set[str]
 ) -> None:
-    """Reject a draft whose sections cite sources not available to the composer."""
+    """Reject a draft whose sections cite sources not available to the composer, or
+    that composed nothing from a non-empty point set (an empty input legitimately
+    yields an empty draft, so the check is conditional on there being sources)."""
+    if available_sources and not draft.sections:
+        raise GuardrailViolation(
+            "EMPTY_DRAFT", "no sections composed from a non-empty point set"
+        )
     for section in draft.sections:
         for source_id in section.cited_sources:
             if source_id not in available_sources:

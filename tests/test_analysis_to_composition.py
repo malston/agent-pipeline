@@ -27,6 +27,13 @@ def test_translation_produces_valid_composer_input():
     assert out.request_id == "r1"
 
 
+def test_empty_findings_produce_no_points_but_keep_gaps():
+    report = AnalysisReport(request_id="r1", findings=[], gaps=["no evidence found"])
+    out = translate_analysis_to_composition(report)
+    assert out.points == []
+    assert out.gaps == ["no evidence found"]
+
+
 def test_findings_map_to_points_and_gaps_carry_through():
     out = translate_analysis_to_composition(_report())
     assert [(p.statement, p.sources, p.confidence) for p in out.points] == [

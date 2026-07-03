@@ -3,8 +3,9 @@
 The composer turns the points A2 supplied into a drafted deliverable. Two
 composers share one seam:
 
-* ``RuleBasedComposer`` -- keyless, deterministic stand-in; one section per point,
-  citing that point's sources. Lets the agent run with no provider.
+* ``RuleBasedComposer`` -- keyless, deterministic stand-in; one section per point
+  citing that point's sources, plus an "Open questions" section when gaps exist.
+  Lets the agent run with no provider.
 * ``LLMComposer`` -- provider-agnostic (build_model seam); the real Model. Needs a
   provider key, so it is exercised only by the gated end-to-end test.
 """
@@ -41,7 +42,8 @@ class Composer(Protocol):
 
 
 class RuleBasedComposer:
-    """Keyless stand-in: one section per point, citing that point's sources."""
+    """Keyless stand-in: one section per point citing that point's sources, plus an
+    "Open questions" section when the input has gaps."""
 
     def compose(self, composer_input: ComposerInput) -> CompositionPlan:
         sections = [

@@ -37,6 +37,11 @@ def test_section_may_cite_nothing():
     assert section.cited_sources == []
 
 
+def test_draft_rejects_empty_style_profile():
+    with pytest.raises(ValidationError):
+        Draft(request_id="r1", sections=[], style_profile="")
+
+
 def test_draft_json_round_trip():
     draft = Draft(
         request_id="r1",

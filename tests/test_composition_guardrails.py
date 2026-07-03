@@ -32,3 +32,17 @@ def test_composition_accepts_sections_citing_available_sources():
 
 def test_composition_accepts_section_that_cites_nothing():
     validate_composition_output(_draft([]), available_sources={"mito"})  # no raise
+
+
+def test_composition_rejects_empty_draft_when_sources_were_available():
+    # Points were supplied (sources available) but the composer produced nothing.
+    empty = Draft(request_id="r1", sections=[], style_profile="x")
+    with pytest.raises(GuardrailViolation) as exc:
+        validate_composition_output(empty, available_sources={"mito", "photo"})
+    assert exc.value.code == "EMPTY_DRAFT"
+
+
+def test_composition_accepts_empty_draft_when_no_sources_available():
+    # Empty input (nothing to compose) legitimately yields an empty draft.
+    empty = Draft(request_id="r1", sections=[], style_profile="x")
+    validate_composition_output(empty, available_sources=set())  # no raise

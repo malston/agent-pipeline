@@ -43,6 +43,10 @@ def test_graph_runs_all_stages_and_populates_state(knowledge, sample_request):
     assert retrieved_ids, "A1 should have retrieved passages for this query"
     for section in draft.sections:
         assert set(section.cited_sources) <= retrieved_ids
+    # at least one section must cite a retrieved source: proves a *point* (not just
+    # a gap) survived the A2->A3 edge, so a translator that dropped findings fails
+    cited = {src for section in draft.sections for src in section.cited_sources}
+    assert cited, "expected a cited section, proving points crossed the A2->A3 edge"
 
 
 def test_graph_checkpoints_stage_output(knowledge, sample_request):

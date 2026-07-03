@@ -61,6 +61,37 @@ def test_a3_rejects_plan_using_ungranted_tool():
     assert exc.value.code == "TOOL_NOT_GRANTED"
 
 
+def test_a3_emits_empty_draft_for_empty_input():
+    # A2 found nothing and flagged no gaps: composing "nothing to say" is honest,
+    # not an error.
+    empty = ComposerInput(request_id="r1", points=[], gaps=[])
+    draft = A3Composer(RuleBasedComposer()).run(empty)
+    assert draft.sections == []
+
+
+def test_a3_composes_gaps_only_input():
+    gaps_only = ComposerInput(request_id="r1", points=[], gaps=["no data on bacteria"])
+    draft = A3Composer(RuleBasedComposer()).run(gaps_only)
+    assert [s.heading for s in draft.sections] == ["Open questions"]
+    assert draft.sections[0].cited_sources == []
+
+
+def test_a3_rejects_composer_that_drops_all_content():
+    # Points were supplied but the composer emitted no sections -- a dropped-content
+    # defect, rejected loudly rather than passed off as an empty deliverable.
+    class _DroppingComposer:
+        def compose(self, composer_input: ComposerInput) -> CompositionPlan:
+            return CompositionPlan(
+                steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
+                sections=[],
+                style_profile="x",
+            )
+
+    with pytest.raises(GuardrailViolation) as exc:
+        A3Composer(_DroppingComposer()).run(_input())
+    assert exc.value.code == "EMPTY_DRAFT"
+
+
 def test_a3_rejects_fabricated_citation():
     class _FabricatingComposer:
         def compose(self, composer_input: ComposerInput) -> CompositionPlan:
