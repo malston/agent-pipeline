@@ -20,3 +20,19 @@ class AnalystInput(BaseModel):
     question: str
     evidence_pool: list[Evidence]
     retrieval_confidence: float = Field(ge=0.0, le=1.0)
+
+
+class Finding(BaseModel):
+    """A claim the analyst extracted, bound to the evidence that supports it."""
+
+    claim: str
+    evidence: list[str] = Field(min_length=1)  # source ids; a claim must cite one
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class AnalysisReport(BaseModel):
+    """A2's output: evidence-bound findings plus the gaps it could not fill."""
+
+    request_id: str
+    findings: list[Finding]
+    gaps: list[str] = []

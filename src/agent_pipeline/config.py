@@ -27,6 +27,18 @@ A1_TOOL_GRANT = {
 
 A1_MAX_PLAN_STEPS = 6
 
+# A2 Analyst's Context Boundary: it reasons over the evidence pool (and may retrieve
+# more); it does not judge claim support (that is A4's `check_claim`).
+A2_TOOL_GRANT = {
+    "search_knowledge",
+    "get_source",
+    "save_scratch",
+    "load_scratch",
+    "emit_contract",
+}
+
+A2_MAX_PLAN_STEPS = 6
+
 # Default provider-agnostic Model id ("provider:model" for init_chat_model).
 # The single source of truth for the default; build_model() applies the MODEL_ID
 # env override at call time. Shared across agents; reasoning-capable by default.

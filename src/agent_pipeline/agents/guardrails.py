@@ -4,6 +4,7 @@ A ``GuardrailViolation`` is a typed, traceable failure -- never a silent pass.
 """
 from agent_pipeline.agents.plan import Plan
 from agent_pipeline.contracts.retrieval import RetrievalBundle
+from agent_pipeline.contracts.analysis import AnalysisReport
 
 TERMINAL_TOOL = "emit_contract"
 
@@ -46,3 +47,16 @@ def validate_retrieval_output(
                 "UNGROUNDED_CITATION",
                 f"passage cites unknown source '{passage.source_id}'",
             )
+
+
+def validate_analysis_output(
+    report: AnalysisReport, evidence_ids: set[str]
+) -> None:
+    """Reject a report whose findings cite evidence outside the input pool."""
+    for finding in report.findings:
+        for source_id in finding.evidence:
+            if source_id not in evidence_ids:
+                raise GuardrailViolation(
+                    "UNGROUNDED_FINDING",
+                    f"finding cites evidence '{source_id}' not in the input pool",
+                )
