@@ -29,6 +29,7 @@ tracing = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "langchain-anthropic" },
     { name = "pytest" },
 ]
 
@@ -45,7 +46,10 @@ requires-dist = [
 provides-extras = ["anthropic", "tracing"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8" }]
+dev = [
+    { name = "langchain-anthropic" },
+    { name = "pytest", specifier = ">=8" },
+]
 
 [[package]]
 name = "annotated-types"

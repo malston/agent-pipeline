@@ -69,7 +69,7 @@ class LLMPlanner:
         "You are the retrieval planner for a RAG pipeline. Given a raw request, "
         "produce a normalized query, one or more semantic search queries, an "
         "integer k, and a plan. Plan steps may use ONLY these tools: "
-        "search_knowledge, get_source, save_scratch, load_scratch, emit_contract. "
+        "search_knowledge, save_scratch, emit_contract. "
         "The final step MUST be emit_contract."
     )
 
@@ -111,7 +111,6 @@ class A1Retriever:
                 bundle = self._emit(request, plan, passages)
                 validate_retrieval_output(bundle, self._knowledge.known_ids())  # guardrail
                 return bundle
-            # get_source / load_scratch are granted but unused by this executor
         raise GuardrailViolation("NO_EMIT", "plan executed without emitting a contract")
 
     def _retrieve(self, plan: RetrievalPlan) -> list[Passage]:
