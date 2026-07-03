@@ -11,6 +11,7 @@ guardrails the output before handing off. Two planners share one seam:
 """
 from typing import Protocol
 
+from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, Field
 
 from agent_pipeline.agents.plan import Plan, PlanStep
@@ -19,7 +20,8 @@ from agent_pipeline.agents.guardrails import (
     validate_plan,
     validate_retrieval_output,
 )
-from agent_pipeline.config import A1_TOOL_GRANT, A1_MAX_PLAN_STEPS, DEFAULT_MODEL_ID
+from agent_pipeline.config import A1_TOOL_GRANT, A1_MAX_PLAN_STEPS
+from agent_pipeline.model import build_model
 from agent_pipeline.contracts.retrieval import (
     Passage,
     RetrievalRequest,
@@ -60,7 +62,8 @@ class RuleBasedPlanner:
 
 
 class LLMPlanner:
-    """Provider-agnostic Model planner. Swappable by MODEL_ID; needs a key."""
+    """Provider-agnostic Model planner. Receives the model by injection from the
+    build_model() seam (DESIGN §9); needs a provider key to invoke."""
 
     _SYSTEM = (
         "You are the retrieval planner for a RAG pipeline. Given a raw request, "
@@ -70,10 +73,9 @@ class LLMPlanner:
         "The final step MUST be emit_contract."
     )
 
-    def __init__(self, model_id: str = DEFAULT_MODEL_ID) -> None:
-        from langchain.chat_models import init_chat_model
-
-        self._model = init_chat_model(model_id).with_structured_output(RetrievalPlan)
+    def __init__(self, model: BaseChatModel | None = None) -> None:
+        base = model if model is not None else build_model()
+        self._model = base.with_structured_output(RetrievalPlan)
 
     def plan(self, request: RetrievalRequest) -> RetrievalPlan:
         return self._model.invoke(
