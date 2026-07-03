@@ -16,12 +16,12 @@ TOOL_CATALOG = {
 }
 
 # A1 Retriever's Context Boundary: it retrieves and hands off; it does not judge
-# claims (that is A4's grant).
+# claims (that is A4's grant). The grant lists only tools the executor actually
+# honors, so a planned tool it cannot run is rejected loudly (TOOL_NOT_GRANTED)
+# rather than silently skipped.
 A1_TOOL_GRANT = {
     "search_knowledge",
-    "get_source",
     "save_scratch",
-    "load_scratch",
     "emit_contract",
 }
 

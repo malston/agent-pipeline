@@ -61,3 +61,28 @@ def test_a1_rejects_plan_that_uses_ungranted_tool(knowledge, sample_request):
     with pytest.raises(GuardrailViolation) as exc:
         agent.run(sample_request)
     assert exc.value.code == "TOOL_NOT_GRANTED"
+
+
+@pytest.mark.parametrize("unhandled_tool", ["get_source", "load_scratch"])
+def test_a1_rejects_plan_using_tool_the_executor_does_not_honor(
+    knowledge, sample_request, unhandled_tool
+):
+    """A tool the executor cannot run must be rejected loudly by the plan
+    guardrail, never granted and then silently skipped."""
+
+    class _UnhandledToolPlanner:
+        def plan(self, request: RetrievalRequest) -> RetrievalPlan:
+            return RetrievalPlan(
+                normalized_query=request.raw_query,
+                search_queries=[request.raw_query],
+                k=4,
+                steps=[
+                    PlanStep(step_id=0, intent="unhandled", tool=unhandled_tool),
+                    PlanStep(step_id=1, intent="emit", tool="emit_contract"),
+                ],
+            )
+
+    agent = A1Retriever(knowledge, _UnhandledToolPlanner())
+    with pytest.raises(GuardrailViolation) as exc:
+        agent.run(sample_request)
+    assert exc.value.code == "TOOL_NOT_GRANTED"
