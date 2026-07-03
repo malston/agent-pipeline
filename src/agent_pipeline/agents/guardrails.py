@@ -6,6 +6,7 @@ from agent_pipeline.agents.plan import Plan
 from agent_pipeline.contracts.retrieval import RetrievalBundle
 from agent_pipeline.contracts.analysis import AnalysisReport
 from agent_pipeline.contracts.composition import Draft
+from agent_pipeline.contracts.validation import ValidatedBrief
 
 TERMINAL_TOOL = "emit_contract"
 
@@ -80,3 +81,14 @@ def validate_composition_output(
                     "UNGROUNDED_SECTION",
                     f"section cites source '{source_id}' not available to compose from",
                 )
+
+
+def validate_brief_output(brief: ValidatedBrief) -> None:
+    """The terminal gate: no brief leaves with a failed check."""
+    checks = brief.checks
+    if not checks.grounding_ok:
+        raise GuardrailViolation("GROUNDING_FAILED", "a claim is not supported by its sources")
+    if not checks.policy_ok:
+        raise GuardrailViolation("POLICY_FAILED", "the brief violates a policy rule")
+    if not checks.format_ok:
+        raise GuardrailViolation("FORMAT_FAILED", "the brief is not well-formed")
