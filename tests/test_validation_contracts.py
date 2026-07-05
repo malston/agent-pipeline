@@ -35,6 +35,16 @@ def test_brief_input_carries_claims_body_and_available_sources():
     assert bi.available_sources == ["mito", "photo"]
 
 
+def test_validated_brief_rejects_empty_body():
+    with pytest.raises(ValidationError):
+        ValidatedBrief(
+            request_id="r1",
+            body="",
+            citations=["mito"],
+            checks=ValidationChecks(grounding_ok=True, policy_ok=True, format_ok=True),
+        )
+
+
 def test_validated_brief_round_trip():
     brief = ValidatedBrief(
         request_id="r1",

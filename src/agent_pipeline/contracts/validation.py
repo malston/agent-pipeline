@@ -35,6 +35,6 @@ class ValidatedBrief(BaseModel):
     """The pipeline's final output: the brief plus the checks that cleared it."""
 
     request_id: str
-    body: str
-    citations: list[str]  # source ids
+    body: str = Field(min_length=1)
+    citations: list[str]  # source ids the claims actually cite
     checks: ValidationChecks

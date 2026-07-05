@@ -44,9 +44,12 @@ def test_graph_runs_all_stages_and_produces_a_validated_brief(knowledge, sample_
 
     brief = result["brief"]
     assert brief.checks.grounding_ok and brief.checks.policy_ok and brief.checks.format_ok
-    # the brief's citations trace back to what A1 actually retrieved
+    # citations are non-empty and trace back to what A1 actually retrieved -- proves a
+    # cited claim survived the A3->A4 edge, so a gutted translator would fail here
     retrieved_ids = {p.source_id for p in result["retrieval"].passages}
-    assert retrieved_ids and set(brief.citations) <= retrieved_ids
+    assert brief.citations, "expected a cited brief, proving claims crossed the A3->A4 edge"
+    assert set(brief.citations) <= retrieved_ids
+    assert set(brief.citations) == {s for c in result["draft"].sections for s in c.cited_sources}
 
 
 def test_graph_checkpoints_stage_output(knowledge, sample_request):

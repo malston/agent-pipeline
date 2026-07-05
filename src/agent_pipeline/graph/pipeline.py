@@ -1,4 +1,4 @@
-"""The complete Pipeline topology as a LangGraph StateGraph.
+"""The Pipeline topology as a LangGraph StateGraph.
 
 The graph runs A1 -> A2 -> A3 -> A4, joined by translator edges, and produces a
 ValidatedBrief. The checkpointer persists each stage's validated output so a

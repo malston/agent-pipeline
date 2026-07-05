@@ -45,3 +45,15 @@ def test_body_includes_every_section():
     assert "Cells make ATP." in out.body
     assert "Plants photosynthesize." in out.body
     assert "No bacteria data." in out.body  # uncited section still in the body
+
+
+def test_all_uncited_draft_yields_no_claims_but_a_body():
+    draft = Draft(
+        request_id="r1",
+        sections=[Section(heading="Open questions", body="No data at all.", cited_sources=[])],
+        style_profile="concise",
+    )
+    out = translate_draft_to_validation(draft)
+    assert out.claims == []
+    assert out.available_sources == []
+    assert "No data at all." in out.body  # body is still non-empty

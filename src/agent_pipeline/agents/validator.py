@@ -9,9 +9,9 @@ planning. Two verifiers share one seam:
 
 * ``StructuralClaimVerifier`` -- keyless; a claim is grounded iff its cited sources
   are all among the available sources (defense-in-depth over upstream grounding).
-* ``LLMClaimVerifier`` -- provider-agnostic; fetches each source's text and has the
-  Model judge whether it actually supports the claim. Needs a key, so it is
-  exercised only by the gated end-to-end test.
+* ``LLMClaimVerifier`` -- provider-agnostic; fetches each source's text (get_source)
+  and has the Model judge whether it actually supports the claim. Needs a key, so it
+  is exercised only by the gated end-to-end test.
 """
 from typing import Protocol
 
@@ -51,8 +51,10 @@ class _ClaimVerdict(BaseModel):
 
 
 class LLMClaimVerifier:
-    """Provider-agnostic: the Model judges whether the cited source text supports
-    the claim. Fetches source text via the knowledge store (check_claim tool)."""
+    """Provider-agnostic: the Model judges whether the cited source text supports the
+    claim. Fetches each cited source's text via the knowledge store (get_source). A
+    source that is cited but not in the store is an infrastructure fault, raised as a
+    distinct SOURCE_UNRESOLVED rather than reported as an unsupported claim."""
 
     _SYSTEM = (
         "You verify grounding. Given a claim and the text of its cited sources, "
@@ -72,11 +74,26 @@ class LLMClaimVerifier:
         for source_id in claim.sources:
             document = self._knowledge.get(source_id)
             if document is None:
-                return False  # cited source does not resolve
+                # Cited source is not in the store: an infra/indexing fault, distinct
+                # from the Model judging the content unsupported.
+                raise GuardrailViolation(
+                    "SOURCE_UNRESOLVED",
+                    f"cited source '{source_id}' is not in the knowledge store",
+                )
             texts.append(document.page_content)
         prompt = f"Claim: {claim.text}\n\nSources:\n" + "\n".join(texts)
         verdict = self._model.invoke([("system", self._SYSTEM), ("human", prompt)])
         return verdict.supported
+
+
+def _cited_sources(brief_input: BriefInput) -> list[str]:
+    """The source ids the claims actually cite, in first-seen order."""
+    cited: list[str] = []
+    for claim in brief_input.claims:
+        for source_id in claim.sources:
+            if source_id not in cited:
+                cited.append(source_id)
+    return cited
 
 
 class A4Validator:
@@ -86,8 +103,11 @@ class A4Validator:
         banned_phrases: frozenset[str] = A4_BANNED_PHRASES,
         max_plan_steps: int = A4_MAX_PLAN_STEPS,
     ) -> None:
+        if "" in banned_phrases:
+            # An empty phrase matches every body, silently failing every brief.
+            raise ValueError("banned_phrases must not contain the empty string")
         self._verifier = verifier
-        self._banned = banned_phrases
+        self._banned = frozenset(p.casefold() for p in banned_phrases)
         self._max_steps = max_plan_steps
 
     def run(self, brief_input: BriefInput) -> ValidatedBrief:
@@ -104,18 +124,21 @@ class A4Validator:
         grounding_ok = True
         for step in plan.steps:  # EXECUTE
             if step.tool == "check_claim":
+                # Vacuously true for a claim-less brief (nothing to verify): A4
+                # grounds the claims it extracts; uncited prose is the composer's job.
                 grounding_ok = all(
                     self._verifier.verify(claim, available)
                     for claim in brief_input.claims
                 )
             elif step.tool == "emit_contract":
+                body_folded = brief_input.body.casefold()
                 brief = ValidatedBrief(
                     request_id=brief_input.request_id,
                     body=brief_input.body,
-                    citations=brief_input.available_sources,
+                    citations=_cited_sources(brief_input),
                     checks=ValidationChecks(
                         grounding_ok=grounding_ok,
-                        policy_ok=not any(p in brief_input.body for p in self._banned),
+                        policy_ok=not any(p in body_folded for p in self._banned),
                         format_ok=bool(brief_input.body.strip()),
                     ),
                 )
