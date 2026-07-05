@@ -22,13 +22,15 @@ class ValidationChecks(BaseModel):
 
 
 class BriefInput(BaseModel):
-    """A4's input: the claims to verify, the assembled body, and the source ids
-    legitimately available to cite."""
+    """A4's input: the claims to verify, the assembled body, the source ids
+    legitimately available to cite, and the texts of sections that cite nothing
+    (assertions with no grounding attempt)."""
 
     request_id: str
     claims: list[Claim]
     body: str = Field(min_length=1)
     available_sources: list[str]
+    uncited_assertions: list[str] = []
 
 
 class ValidatedBrief(BaseModel):

@@ -13,8 +13,9 @@ from agent_pipeline.agents.retriever import A1Retriever, RuleBasedPlanner
 from agent_pipeline.agents.analyst import A2Analyst, RuleBasedAnalyst
 from agent_pipeline.agents.composer import A3Composer, RuleBasedComposer, CompositionPlan
 from agent_pipeline.agents.plan import PlanStep
-from agent_pipeline.agents.validator import A4Validator
+from agent_pipeline.agents.validator import A4Validator, StructuralClaimVerifier
 from agent_pipeline.agents.guardrails import GuardrailViolation
+from agent_pipeline.config import MAX_COMPOSE_ATTEMPTS
 from agent_pipeline.contracts.retrieval import RetrievalRequest
 from agent_pipeline.contracts.composition import Section
 
@@ -143,3 +144,28 @@ def test_policy_failure_routes_to_the_gate_without_looping():
         app.invoke(_initial(request), {"configurable": {"thread_id": "r1"}})
     assert exc.value.code == "POLICY_FAILED"
     assert composer.calls == 1  # policy failure did not trigger the recompose loop
+
+
+class _UncitedSectionComposer:
+    """Emits one content section that cites nothing, every time -- it never grounds."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def compose(self, composer_input, feedback=None):
+        self.calls += 1
+        return CompositionPlan(
+            steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
+            sections=[Section(heading="Floating", body="Unbacked assertion.", cited_sources=[])],
+            style_profile="plain",
+        )
+
+
+def test_uncited_section_drives_the_loop_to_exhaustion():
+    composer = _UncitedSectionComposer()
+    app = _app(_one_doc_store(), A3Composer(composer), StructuralClaimVerifier())
+    request = RetrievalRequest(request_id="r1", raw_query="how do cells make energy?")
+    with pytest.raises(GuardrailViolation) as exc:
+        app.invoke(_initial(request), {"configurable": {"thread_id": "r1"}})
+    assert exc.value.code == "GROUNDING_FAILED"
+    assert composer.calls == MAX_COMPOSE_ATTEMPTS  # an uncited section can never ground

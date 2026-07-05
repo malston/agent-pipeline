@@ -170,3 +170,29 @@ def test_validation_outcome_rejects_ungrounded_brief_with_no_unsupported_claims(
 def test_validation_outcome_accepts_the_two_consistent_states():
     ValidationOutcome(brief=_brief(grounding_ok=True), unsupported=[])
     ValidationOutcome(brief=_brief(grounding_ok=False), unsupported=["x"])
+
+
+def test_a4_check_reports_uncited_assertion_as_unsupported():
+    bi = BriefInput(
+        request_id="r1",
+        claims=[Claim(text="grounded claim", sources=["mito"])],
+        body="Some body.",
+        available_sources=["mito"],
+        uncited_assertions=["a floating claim that cites nothing"],
+    )
+    outcome = A4Validator(StructuralClaimVerifier()).check(bi)
+    assert outcome.brief.checks.grounding_ok is False
+    assert "a floating claim that cites nothing" in outcome.unsupported
+
+
+def test_a4_run_gates_an_uncited_assertion():
+    bi = BriefInput(
+        request_id="r1",
+        claims=[Claim(text="grounded claim", sources=["mito"])],
+        body="Some body.",
+        available_sources=["mito"],
+        uncited_assertions=["ungrounded floating claim"],
+    )
+    with pytest.raises(GuardrailViolation) as exc:
+        A4Validator(StructuralClaimVerifier()).run(bi)
+    assert exc.value.code == "GROUNDING_FAILED"

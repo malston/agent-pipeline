@@ -92,6 +92,12 @@ rejects a section, the graph recomposes A3 with the unsupported claims as feedba
 to `MAX_COMPOSE_ATTEMPTS`, then raises. See
 [docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md).
 
+Grounding covers the emitted body, not just the cited claims: a content section that
+cites nothing becomes an _uncited assertion_ (`BriefInput.uncited_assertions`) that
+counts as unsupported, so it fails grounding and feeds the A3⇄A4 loop. Acknowledged
+gaps are not assertions -- they live in `Draft.gaps`, render into the body, and never
+block grounding (#19).
+
 ---
 
 ## 3. Anatomy of one agent (Model + Harness)
