@@ -4,7 +4,7 @@ Runs the keyless A1->A2->A3->A4 graph on a golden request and scores the final
 brief's citations against the sources that should back the answer. Bound to traces
 via the harness, like the agent-scope evals.
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agent_pipeline.agents.retriever import A1Retriever, RuleBasedPlanner
 from agent_pipeline.agents.analyst import A2Analyst, RuleBasedAnalyst
@@ -20,7 +20,7 @@ from agent_pipeline.tools.knowledge import KnowledgeStore
 class SystemExample(BaseModel):
     id: str
     request: str
-    relevant_sources: list[str]
+    relevant_sources: list[str] = Field(min_length=1)  # a golden example must label >=1
 
 
 def evaluate_pipeline(

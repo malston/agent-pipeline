@@ -1,11 +1,13 @@
 """The eval harness: run examples, score outputs, bind every score to a trace id.
 
 Trace-id binding is the design's requirement (evals attach to the trace of the run
-that produced them); the LangSmith adapter later pushes these as feedback-on-run.
+that produced them). It mirrors LangSmith's feedback-on-run shape so tracing can be
+layered on later without reshaping scores.
 """
-from pydantic import BaseModel
+import pytest
+from pydantic import BaseModel, ValidationError
 
-from agent_pipeline.evals.harness import evaluate
+from agent_pipeline.evals.harness import evaluate, EvalReport, Trace, Score
 
 
 class _Example(BaseModel):
@@ -46,3 +48,34 @@ def test_report_aggregates_mean_of_a_metric():
 def test_trace_ids_are_unique_per_run_by_default():
     report = evaluate(_dataset(), run_fn=lambda ex: ex.text, metrics={})
     assert len({t.trace_id for t in report.traces}) == 2
+
+
+def test_aggregate_raises_on_a_metric_with_no_scores():
+    report = evaluate(_dataset(), run_fn=lambda ex: ex.text, metrics={})
+    with pytest.raises(ValueError):
+        report.aggregate("length")
+
+
+def test_evaluate_isolates_per_example_failures():
+    # one example's run raises; the batch continues and records the failure
+    def run(ex):
+        if ex.id == "e1":
+            raise RuntimeError("boom")
+        return ex.text
+
+    report = evaluate(
+        _dataset(), run_fn=run, metrics={"length": lambda out, ex: float(len(out))}
+    )
+    errored = [t for t in report.traces if t.error is not None]
+    assert [t.example_id for t in errored] == ["e1"]
+    assert "boom" in errored[0].error
+    # the healthy example was still scored
+    assert [s.value for s in report.scores] == [4.0]  # only e2 ("abcd")
+
+
+def test_report_rejects_scores_referencing_unknown_traces():
+    with pytest.raises(ValidationError):
+        EvalReport(
+            traces=[Trace(trace_id="t1", example_id="e1", output=None)],
+            scores=[Score(trace_id="ghost", metric="m", value=1.0)],
+        )

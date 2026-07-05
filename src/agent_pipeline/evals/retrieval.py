@@ -2,9 +2,9 @@
 
 Scores a golden dataset (query -> the source ids that should be retrieved) with
 recall@k and MRR, binding each score to its run's trace via the harness. This is the
-evidence base for HDD tuning of retrieval (k, chunking, hybrid search).
+evidence base for HDD tuning of retrieval (starting with k).
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agent_pipeline.evals.harness import evaluate, EvalReport
 from agent_pipeline.evals.metrics import recall_at_k, reciprocal_rank
@@ -14,7 +14,7 @@ from agent_pipeline.tools.knowledge import KnowledgeStore
 class RetrievalExample(BaseModel):
     id: str
     query: str
-    relevant_sources: list[str]
+    relevant_sources: list[str] = Field(min_length=1)  # a golden example must label >=1
 
 
 def evaluate_retrieval(

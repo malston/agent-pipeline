@@ -3,6 +3,8 @@
 
 def recall_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
     """Fraction of the relevant ids that appear in the top-k retrieved ids."""
+    if k <= 0:
+        raise ValueError(f"recall_at_k needs k >= 1, got {k}")
     if not relevant:
         raise ValueError("recall_at_k needs a non-empty relevant set")
     top_k = set(retrieved[:k])
