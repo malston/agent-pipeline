@@ -1,7 +1,7 @@
 # Reflection loop: A3 Composer ⇄ A4 Validator — Design
 
 **Date:** 2026-07-05
-**Status:** Approved (design), pending implementation plan
+**Status:** Implemented (PR #17); plan at `docs/superpowers/plans/2026-07-05-reflection-loop.md`
 **Issue:** epic #7 follow-up (composer faithfulness → reliably-green all-LLM pipeline)
 
 ## Problem
