@@ -1,0 +1,89 @@
+<svg width="680" viewBox="0 0 680 655" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Agent pipeline graph with the A3 to A4 reflection loop</title>
+<desc>LangGraph state graph: start -> A1 Retriever -> A2 Analyst -> A3 Composer -> A4 Validator -> decision (grounded?). If not grounded and attempts remain, loop back to A3 to recompose with per-claim feedback; otherwise go to the gate, which raises if still ungrounded, then to end. A1 and A2 run once; only A3 and A4 loop.</desc>
+<style>
+  text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+  .th { font-size: 14px; font-weight: 600; fill: #1f2937; }
+  .ts { font-size: 12px; font-weight: 400; fill: #4b5563; }
+  .agent { fill: #e7effc; stroke: #5b8def; stroke-width: 1.2; }
+  .amber { fill: #fdf1d6; stroke: #d99b2b; stroke-width: 1.2; }
+  .gray  { fill: #eef0f3; stroke: #9aa3af; stroke-width: 1.2; }
+  .edge  { stroke: #6b7280; stroke-width: 1.4; fill: none; }
+  .loop  { stroke: #d99b2b; stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+</style>
+<defs>
+<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/>
+</marker>
+<marker id="arrLoop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#d99b2b"/>
+</marker>
+</defs>
+
+<rect x="1" y="1" width="678" height="653" rx="8" fill="#ffffff" stroke="#e5e7eb"/>
+
+<!-- start -->
+<rect class="gray" x="290" y="40" width="100" height="26" rx="13"/>
+<text class="ts" x="340" y="57" text-anchor="middle">start</text>
+<line x1="340" y1="66" x2="340" y2="88" class="edge" marker-end="url(#arr)"/>
+
+<!-- A1 -->
+<rect class="agent" x="225" y="90" width="230" height="46" rx="8"/>
+<text class="th" x="340" y="110" text-anchor="middle">A1 Retriever</text>
+<text class="ts" x="340" y="126" text-anchor="middle">retrieve evidence (RAG)</text>
+<line x1="340" y1="136" x2="340" y2="174" class="edge" marker-end="url(#arr)"/>
+<text class="ts" x="352" y="159" text-anchor="start">retrieval &#8594; analysis</text>
+
+<!-- A2 -->
+<rect class="agent" x="225" y="176" width="230" height="46" rx="8"/>
+<text class="th" x="340" y="196" text-anchor="middle">A2 Analyst</text>
+<text class="ts" x="340" y="212" text-anchor="middle">findings + evidence</text>
+<line x1="340" y1="222" x2="340" y2="260" class="edge" marker-end="url(#arr)"/>
+<text class="ts" x="352" y="245" text-anchor="start">analysis &#8594; composition</text>
+
+<!-- A3 (loop node) -->
+<rect class="agent" x="225" y="262" width="230" height="52" rx="8"/>
+<text class="th" x="340" y="283" text-anchor="middle">A3 Composer</text>
+<text class="ts" x="340" y="300" text-anchor="middle">compose from the given points</text>
+<line x1="340" y1="314" x2="340" y2="352" class="edge" marker-end="url(#arr)"/>
+<text class="ts" x="352" y="337" text-anchor="start">draft &#8594; validation</text>
+
+<!-- A4 (loop node) -->
+<rect class="agent" x="225" y="354" width="230" height="52" rx="8"/>
+<text class="th" x="340" y="375" text-anchor="middle">A4 Validator</text>
+<text class="ts" x="340" y="392" text-anchor="middle">check() &#8212; report, no raise</text>
+<line x1="340" y1="406" x2="340" y2="416" class="edge" marker-end="url(#arr)"/>
+
+<!-- decision -->
+<polygon class="amber" points="340,418 402,448 340,478 278,448"/>
+<text class="ts" x="340" y="452" text-anchor="middle">grounded?</text>
+<line x1="340" y1="478" x2="340" y2="508" class="edge" marker-end="url(#arr)"/>
+<text class="ts" x="352" y="499" text-anchor="start">yes, or attempts spent</text>
+
+<!-- loop-back edge -->
+<path d="M278,448 L160,448 L160,288 L223,288" class="loop" marker-end="url(#arrLoop)"/>
+<text class="ts" x="25" y="356" text-anchor="start">recompose with</text>
+<text class="ts" x="25" y="372" text-anchor="start">per-claim feedback</text>
+<text class="ts" x="25" y="388" text-anchor="start">while attempt &lt; 3</text>
+
+<!-- side note -->
+<text class="ts" x="470" y="200" text-anchor="start">A1, A2 run once;</text>
+<text class="ts" x="470" y="216" text-anchor="start">only A3 &#8646; A4 loops</text>
+
+<!-- gate -->
+<rect class="gray" x="225" y="510" width="230" height="46" rx="8"/>
+<text class="th" x="340" y="530" text-anchor="middle">gate</text>
+<text class="ts" x="340" y="546" text-anchor="middle">validate_brief_output</text>
+<line x1="340" y1="556" x2="340" y2="582" class="edge" marker-end="url(#arr)"/>
+<text class="ts" x="352" y="573" text-anchor="start">raises if ungrounded</text>
+
+<!-- end -->
+<rect class="gray" x="290" y="584" width="100" height="26" rx="13"/>
+<text class="ts" x="340" y="601" text-anchor="middle">end &#8594; ValidatedBrief</text>
+
+<!-- legend -->
+<rect class="agent" x="225" y="624" width="13" height="13" rx="3"/>
+<text class="ts" x="244" y="634" text-anchor="start">agent (Model + Harness)</text>
+<rect class="amber" x="430" y="624" width="13" height="13" rx="3"/>
+<text class="ts" x="449" y="634" text-anchor="start">reflection loop</text>
+</svg>

@@ -31,6 +31,8 @@ def _initial(request):
         "analysis": None,
         "draft": None,
         "brief": None,
+        "feedback": None,
+        "attempt": 0,
     }
 
 

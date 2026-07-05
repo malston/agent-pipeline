@@ -5,7 +5,12 @@ The LLM-backed composer is exercised in test_a3_e2e.py, gated on a provider key.
 """
 import pytest
 
-from agent_pipeline.agents.composer import A3Composer, RuleBasedComposer, CompositionPlan
+from agent_pipeline.agents.composer import (
+    A3Composer,
+    RuleBasedComposer,
+    LLMComposer,
+    CompositionPlan,
+)
 from agent_pipeline.agents.plan import PlanStep
 from agent_pipeline.agents.guardrails import GuardrailViolation
 from agent_pipeline.contracts.composition import (
@@ -46,7 +51,7 @@ def test_a3_produces_grounded_draft_end_to_end():
 
 def test_a3_rejects_plan_using_ungranted_tool():
     class _RetrievingComposer:
-        def compose(self, composer_input: ComposerInput) -> CompositionPlan:
+        def compose(self, composer_input: ComposerInput, feedback=None) -> CompositionPlan:
             return CompositionPlan(
                 steps=[
                     PlanStep(step_id=0, intent="retrieve", tool="search_knowledge"),
@@ -80,7 +85,7 @@ def test_a3_rejects_composer_that_drops_all_content():
     # Points were supplied but the composer emitted no sections -- a dropped-content
     # defect, rejected loudly rather than passed off as an empty deliverable.
     class _DroppingComposer:
-        def compose(self, composer_input: ComposerInput) -> CompositionPlan:
+        def compose(self, composer_input: ComposerInput, feedback=None) -> CompositionPlan:
             return CompositionPlan(
                 steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
                 sections=[],
@@ -94,7 +99,7 @@ def test_a3_rejects_composer_that_drops_all_content():
 
 def test_a3_rejects_fabricated_citation():
     class _FabricatingComposer:
-        def compose(self, composer_input: ComposerInput) -> CompositionPlan:
+        def compose(self, composer_input: ComposerInput, feedback=None) -> CompositionPlan:
             return CompositionPlan(
                 steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
                 sections=[Section(heading="H", body="B", cited_sources=["ghost"])],
@@ -104,3 +109,76 @@ def test_a3_rejects_fabricated_citation():
     with pytest.raises(GuardrailViolation) as exc:
         A3Composer(_FabricatingComposer()).run(_input())
     assert exc.value.code == "UNGROUNDED_SECTION"
+
+
+def test_rule_based_composer_ignores_feedback():
+    # the keyless composer is already faithful; feedback must not change its output
+    ci = _input()
+    assert RuleBasedComposer().compose(ci, feedback=["anything"]) == RuleBasedComposer().compose(ci)
+
+
+def test_a3_run_threads_feedback_to_the_composer():
+    class _CapturingComposer:
+        def __init__(self):
+            self.received = "unset"
+
+        def compose(self, composer_input, feedback=None):
+            self.received = feedback
+            return CompositionPlan(
+                steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
+                sections=[Section(heading="H", body="B", cited_sources=["mito"])],
+                style_profile="x",
+            )
+
+    capturing = _CapturingComposer()
+    A3Composer(capturing).run(_input(), feedback=["unsupported claim"])
+    assert capturing.received == ["unsupported claim"]
+
+
+class _CapturingModel:
+    """Test double for the injected BaseChatModel. Records the messages
+    LLMComposer's prompt construction hands it, and returns a canned plan.
+
+    with_structured_output returns self, so LLMComposer.compose calls invoke on
+    this same object -- letting the test read back the human message it built.
+    """
+
+    def __init__(self):
+        self.messages = None
+
+    def with_structured_output(self, schema):
+        return self
+
+    def invoke(self, messages):
+        self.messages = messages
+        return CompositionPlan(
+            steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
+            sections=[Section(heading="H", body="B", cited_sources=["mito"])],
+            style_profile="x",
+        )
+
+
+def _human_message(model: _CapturingModel) -> str:
+    # compose sends [("system", SYSTEM), ("human", human)]
+    role, text = model.messages[1]
+    assert role == "human"
+    return text
+
+
+def test_llm_composer_formats_feedback_as_bullets_in_the_prompt():
+    model = _CapturingModel()
+    LLMComposer(model=model).compose(
+        _input(), feedback=["Mitochondria are the powerhouse.", "Plants eat sunlight."]
+    )
+
+    human = _human_message(model)
+    assert "- Mitochondria are the powerhouse." in human
+    assert "- Plants eat sunlight." in human
+    assert "were NOT supported" in human
+
+
+def test_llm_composer_omits_feedback_block_without_feedback():
+    model = _CapturingModel()
+    LLMComposer(model=model).compose(_input())
+
+    assert "were NOT supported" not in _human_message(model)

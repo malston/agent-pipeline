@@ -53,6 +53,9 @@ A4_MAX_PLAN_STEPS = 6
 # (permissive); set to enforce a content policy.
 A4_BANNED_PHRASES: frozenset[str] = frozenset()
 
+# Reflection loop: max A3 compose attempts before A4's gate raises (1 initial + retries).
+MAX_COMPOSE_ATTEMPTS = 3
+
 # Default provider-agnostic Model id ("provider:model" for init_chat_model).
 # The single source of truth for the default; build_model() applies the MODEL_ID
 # env override at call time. Shared across agents; reasoning-capable by default.

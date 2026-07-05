@@ -41,6 +41,8 @@ def evaluate_pipeline(
                 "analysis": None,
                 "draft": None,
                 "brief": None,
+                "feedback": None,
+                "attempt": 0,
             },
             {"configurable": {"thread_id": example.id}},
         )

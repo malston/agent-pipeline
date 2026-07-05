@@ -87,6 +87,11 @@ Mitigations (all Harness):
 - **Bounded re-prompt** on guardrail failure, then hard-fail the stage with a typed error
   captured in the trace.
 
+**Reflection loop.** A3 ⇄ A4 form an ADD Reflection loop: when A4's grounding check
+rejects a section, the graph recomposes A3 with the unsupported claims as feedback, up
+to `MAX_COMPOSE_ATTEMPTS`, then raises. See
+[docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md).
+
 ---
 
 ## 3. Anatomy of one agent (Model + Harness)
@@ -409,11 +414,27 @@ proof.
 
 ---
 
-## 13. Open decisions / next steps
+## 13. Status / open items
 
-- **Concrete vendors**: pick the vector DB, checkpointer backend, and default `MODEL_ID`.
-- **Eval dataset**: assemble representative `(request → golden ValidatedBrief)` pairs plus
-  per-stage golden contracts for agent-level evals.
-- **Scaffold**: repo is not yet a git repo. On your go-ahead I'll `git init`, lay out the
-  package (`agents/`, `contracts/`, `tools/`, `translators/`, `graph/`, `evals/`), and
-  build A1 end-to-end first (TDD), since RAG quality gates the whole pipeline.
+**Shipped (on `main`, TDD throughout):**
+
+- The full `A1 → A2 → A3 → A4` pipeline producing a `ValidatedBrief`, with typed contracts
+  and Context Translators on every edge and guardrails on every output.
+- Provider-agnostic Model layer (`model.build_model()`, default `anthropic:claude-sonnet-5`),
+  swappable by `MODEL_ID`. Dev defaults: `InMemoryVectorStore` (semantic memory) and the
+  in-memory LangGraph checkpointer.
+- Eval harness (#5): retrieval recall@k / MRR and system-scope citation recall/precision,
+  every score bound to a per-run trace id; golden datasets live in `tests/`.
+
+**In progress:**
+
+- A3 ⇄ A4 reflection loop — recompose on grounding failure with per-claim feedback, up to
+  `MAX_COMPOSE_ATTEMPTS`, then raise (this branch; see
+  [docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md)).
+
+**Open (key/service-gated, tracked in #6):**
+
+- Production infra: pgvector (or Qdrant) behind the `VectorStore` seam; a Postgres-backed
+  checkpointer; LangSmith tracing (one trace per run) plus the eval LangSmith adapter
+  (push each trace as a run and each score as feedback-on-run).
+- Richer eval datasets and metrics as a real corpus replaces the toy fixtures.
