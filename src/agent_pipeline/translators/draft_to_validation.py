@@ -1,17 +1,17 @@
 """Context Translation for the A3 -> A4 boundary.
 
 Maps the composition vocabulary (draft of sections + gaps) into the validation
-vocabulary. A cited section becomes a claim; a section that cites nothing becomes an
-uncited assertion (ungrounded -- no grounding attempt). The section text and the gaps
-assemble into the body; cited source ids become the available-sources set.
-Deterministic and Model-free.
+vocabulary. A cited section becomes a claim; a section that cites nothing -- and a gap
+A2 never reported -- becomes an uncited assertion (ungrounded, no grounding attempt).
+The section text and the gaps assemble into the body; cited source ids become the
+available-sources set. Deterministic and Model-free.
 """
 from agent_pipeline.contracts.composition import Draft
 from agent_pipeline.contracts.validation import BriefInput, Claim
 from agent_pipeline.agents.guardrails import GuardrailViolation
 
 
-def translate_draft_to_validation(draft: Draft) -> BriefInput:
+def translate_draft_to_validation(draft: Draft, legitimate_gaps: list[str]) -> BriefInput:
     if not draft.sections and not draft.gaps:
         # nothing to ground and nothing to acknowledge -- the body would be empty; fail
         # with a domain-typed guardrail, not a generic pydantic error on BriefInput.body.
@@ -24,9 +24,10 @@ def translate_draft_to_validation(draft: Draft) -> BriefInput:
         for section in draft.sections
         if section.cited_sources
     ]
+    known_gaps = set(legitimate_gaps)
     uncited_assertions = [
         section.body for section in draft.sections if not section.cited_sources
-    ]
+    ] + [gap for gap in draft.gaps if gap not in known_gaps]
 
     available: list[str] = []
     seen: set[str] = set()
