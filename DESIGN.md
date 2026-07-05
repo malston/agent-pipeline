@@ -87,6 +87,11 @@ Mitigations (all Harness):
 - **Bounded re-prompt** on guardrail failure, then hard-fail the stage with a typed error
   captured in the trace.
 
+**Reflection loop.** A3 ⇄ A4 form an ADD Reflection loop: when A4's grounding check
+rejects a section, the graph recomposes A3 with the unsupported claims as feedback, up
+to `MAX_COMPOSE_ATTEMPTS`, then raises. See
+[docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md).
+
 ---
 
 ## 3. Anatomy of one agent (Model + Harness)
