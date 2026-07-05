@@ -10,12 +10,16 @@ Design. Full design in [DESIGN.md](DESIGN.md).
 request -> A1 Retriever -> A2 Analyst -> A3 Composer -> A4 Validator -> ValidatedBrief
 ```
 
+See the **[pipeline graph](docs/architecture/pipeline-graph.md)** for the full LangGraph
+topology, including the A3 &#8646; A4 reflection loop.
+
 ## Status
 
-- **A1 Retriever** built end-to-end (TDD): Plan-Execute loop, real RAG retrieval,
-  plan + output guardrails, working memory, LangGraph node with checkpointing,
-  and the A1 -> A2 Context Translator.
-- A2 / A3 / A4 are next: attach as further graph nodes with translator edges.
+- All four agents built end-to-end (TDD): A1 Retriever, A2 Analyst, A3 Composer, and
+  A4 Validator, wired `A1 -> A2 -> A3 -> A4` with a Context Translator on every edge and
+  guardrails on every output.
+- An eval harness scores retrieval and citation quality, with results bound to trace ids.
+- In progress: the A3 &#8646; A4 reflection loop (see the graph above).
 
 ## Layout
 
@@ -26,7 +30,7 @@ src/agent_pipeline/
   agents/        agent harness: planners, Plan-Execute loop, guardrails
   translators/   Context Translation between agent vocabularies
   graph/         LangGraph StateGraph wiring + checkpointing
-  evals/         (next) agent/system evals bound to trace ids
+  evals/         agent/system evals (metrics + harness) bound to trace ids
 ```
 
 ## Develop
