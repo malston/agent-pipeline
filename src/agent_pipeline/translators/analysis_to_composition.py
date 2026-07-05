@@ -3,6 +3,10 @@
 Maps the analysis vocabulary (findings: claim / evidence) into the composition
 vocabulary (points: statement / sources). Gaps carry through unchanged. This is
 the only place that vocabulary change happens, and it is Model-free.
+
+Gaps must flow through verbatim: A4's fabricated-gap check compares Draft.gaps against
+AnalysisReport.gaps by exact membership, so rephrasing or deduping gaps here would make
+legitimate gaps look invented.
 """
 from agent_pipeline.contracts.analysis import AnalysisReport
 from agent_pipeline.contracts.composition import ComposerInput, Point

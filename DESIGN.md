@@ -88,8 +88,8 @@ Mitigations (all Harness):
   captured in the trace.
 
 **Reflection loop.** A3 ⇄ A4 form an ADD Reflection loop: when A4's grounding check
-rejects a section, the graph recomposes A3 with the unsupported claims as feedback, up
-to `MAX_COMPOSE_ATTEMPTS`, then raises. See
+rejects a section, the graph recomposes A3 with the unsupported texts (rejected claims
+plus any uncited assertions) as feedback, up to `MAX_COMPOSE_ATTEMPTS`, then raises. See
 [docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md).
 
 Grounding covers the emitted body, not just the cited claims: a content section that
@@ -97,6 +97,10 @@ cites nothing becomes an _uncited assertion_ (`BriefInput.uncited_assertions`) t
 counts as unsupported, so it fails grounding and feeds the A3⇄A4 loop. Acknowledged
 gaps are not assertions -- they live in `Draft.gaps`, render into the body, and never
 block grounding (#19).
+
+A gap A3 emits that A2 never reported is likewise treated as an uncited assertion and
+fails grounding, so the composer cannot smuggle unverified prose through the gaps
+channel (#22).
 
 ---
 
@@ -431,12 +435,19 @@ proof.
   in-memory LangGraph checkpointer.
 - Eval harness (#5): retrieval recall@k / MRR and system-scope citation recall/precision,
   every score bound to a per-run trace id; golden datasets live in `tests/`.
+- A3 ⇄ A4 reflection loop (#17): A4 reports the unsupported claims, A3 recomposes with that
+  feedback up to `MAX_COMPOSE_ATTEMPTS`, then the terminal gate raises. See
+  [docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md).
+- Body-grounding (#19): A4 grounds every section that ships. A section citing nothing is an
+  uncited assertion that fails grounding and feeds the loop; acknowledged gaps live in
+  `Draft.gaps` and are not assertions.
+- Typed `EMPTY_BRIEF` guard (#21): an empty-everything draft fails as a domain guardrail
+  rather than a generic Pydantic error.
 
-**In progress:**
+**In review / in progress:**
 
-- A3 ⇄ A4 reflection loop — recompose on grounding failure with per-claim feedback, up to
-  `MAX_COMPOSE_ATTEMPTS`, then raise (this branch; see
-  [docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md)).
+- Gaps-channel hardening (#22): a gap A2 never reported is folded into the uncited
+  assertions and fails grounding, closing gap-stuffing (this branch).
 
 **Open (key/service-gated, tracked in #6):**
 

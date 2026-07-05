@@ -75,7 +75,13 @@ def build_graph(
                 "validator_node reached with no draft; "
                 "A3 did not populate state['draft']"
             )
-        outcome = validator.check(translate_draft_to_validation(draft))
+        analysis = state["analysis"]
+        if analysis is None:
+            raise ValueError(
+                "validator_node reached with no analysis; "
+                "A2 did not populate state['analysis']"
+            )
+        outcome = validator.check(translate_draft_to_validation(draft, analysis.gaps))
         return {"brief": outcome.brief, "feedback": outcome.unsupported}
 
     def gate_node(state: PipelineState) -> dict:

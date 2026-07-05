@@ -3,6 +3,8 @@
 ``ComposerInput`` is A3's input contract -- the target vocabulary the A2->A3
 translator maps ``AnalysisReport`` into. ``Draft`` is A3's output.
 """
+from typing import Annotated
+
 from pydantic import BaseModel, Field
 
 
@@ -37,5 +39,7 @@ class Draft(BaseModel):
 
     request_id: str
     sections: list[Section]
-    gaps: list[str] = []
+    # each gap is a non-empty acknowledgment (like Section.body), so a fabricated gap
+    # folded into uncited_assertions never violates that field's own non-empty constraint
+    gaps: list[Annotated[str, Field(min_length=1)]] = []
     style_profile: str = Field(min_length=1)

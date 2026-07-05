@@ -184,3 +184,34 @@ def test_gaps_only_draft_ships_grounded_without_looping():
     brief = result["brief"]
     assert brief is not None and brief.checks.grounding_ok is True
     assert len(composer.feedbacks) == 1  # composed once; gaps do not drive a recompose
+
+
+class _FabricatedGapComposer:
+    """Emits a grounded section but also invents a gap A2 never reported, every time."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def compose(self, composer_input, feedback=None):
+        self.calls += 1
+        sections = [
+            Section(heading="Point 1", body=p.statement, cited_sources=p.sources)
+            for p in composer_input.points
+        ]
+        return CompositionPlan(
+            steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
+            sections=sections,
+            gaps=[*composer_input.gaps, "Cells secretly feel joy."],
+            style_profile="plain",
+        )
+
+def test_fabricated_gap_drives_the_loop_to_exhaustion():
+    # the section is grounded, but the invented gap is unbacked body text -> it fails
+    # grounding and drives the loop to exhaustion, then the gate raises.
+    composer = _FabricatedGapComposer()
+    app = _app(_one_doc_store(), A3Composer(composer), StructuralClaimVerifier())
+    request = RetrievalRequest(request_id="r1", raw_query="how do cells make energy?")
+    with pytest.raises(GuardrailViolation) as exc:
+        app.invoke(_initial(request), {"configurable": {"thread_id": "r1"}})
+    assert exc.value.code == "GROUNDING_FAILED"
+    assert composer.calls == MAX_COMPOSE_ATTEMPTS  # the invented gap never grounds

@@ -42,6 +42,12 @@ def test_draft_rejects_empty_style_profile():
         Draft(request_id="r1", sections=[], style_profile="")
 
 
+def test_draft_rejects_empty_gap():
+    # a gap is a non-empty acknowledgment; an empty one would ship as unbacked whitespace
+    with pytest.raises(ValidationError):
+        Draft(request_id="r1", sections=[], gaps=[""], style_profile="x")
+
+
 def test_draft_json_round_trip():
     draft = Draft(
         request_id="r1",

@@ -79,9 +79,10 @@ class LLMComposer:
         "even if you believe them true -- any added detail will be rejected by the "
         "downstream grounding check. A section that draws on points cites ONLY those "
         "points' source ids, and every sentence in it must be supported by those "
-        "cited points. List any unanswered gaps in the gaps field as plain strings "
-        "(do not invent gaps); do not put them in a section. Every section must cite "
-        "the source ids it draws on. Pick a concise style_profile. You have no "
+        "cited points. Copy each given gap verbatim into the gaps field -- do not "
+        "rephrase, merge, or invent gaps, and do not put them in a section. Every "
+        "section must cite the source ids it draws on. Pick a concise style_profile. "
+        "You have no "
         "retrieval tools: "
         "produce a plan whose single step uses the tool emit_contract."
     )
