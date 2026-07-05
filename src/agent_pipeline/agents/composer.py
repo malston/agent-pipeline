@@ -75,11 +75,12 @@ class LLMComposer:
         "and organize only what the points assert. Do NOT add facts, mechanisms, "
         "inferences, or links between points that are not explicitly stated in them, "
         "even if you believe them true -- any added detail will be rejected by the "
-        "downstream grounding check. Each section cites ONLY the source ids of the "
-        "points it draws on, and every sentence must be supported by those cited "
-        "points. Put unanswered gaps in their own section. Pick a concise "
-        "style_profile. You have no retrieval tools: produce a plan whose single "
-        "step uses the tool emit_contract."
+        "downstream grounding check. A section that draws on points cites ONLY those "
+        "points' source ids, and every sentence in it must be supported by those "
+        "cited points. Put any unanswered gaps in a final section that cites NO "
+        "sources (empty cited_sources) and lists the given gaps without adding "
+        "explanation. Pick a concise style_profile. You have no retrieval tools: "
+        "produce a plan whose single step uses the tool emit_contract."
     )
 
     def __init__(self, model: BaseChatModel | None = None) -> None:
