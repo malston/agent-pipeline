@@ -98,6 +98,10 @@ counts as unsupported, so it fails grounding and feeds the A3⇄A4 loop. Acknowl
 gaps are not assertions -- they live in `Draft.gaps`, render into the body, and never
 block grounding (#19).
 
+A gap A3 emits that A2 never reported is likewise treated as an uncited assertion and
+fails grounding, so the composer cannot smuggle unverified prose through the gaps
+channel (#22).
+
 ---
 
 ## 3. Anatomy of one agent (Model + Harness)
