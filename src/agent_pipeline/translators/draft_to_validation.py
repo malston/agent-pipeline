@@ -17,9 +17,11 @@ def translate_draft_to_validation(draft: Draft) -> BriefInput:
     ]
 
     available: list[str] = []
+    seen: set[str] = set()
     for section in draft.sections:
         for source_id in section.cited_sources:
-            if source_id not in available:
+            if source_id not in seen:
+                seen.add(source_id)
                 available.append(source_id)
 
     body = "\n\n".join(

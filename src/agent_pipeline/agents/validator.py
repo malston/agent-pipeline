@@ -89,9 +89,11 @@ class LLMClaimVerifier:
 def _cited_sources(brief_input: BriefInput) -> list[str]:
     """The source ids the claims actually cite, in first-seen order."""
     cited: list[str] = []
+    seen: set[str] = set()
     for claim in brief_input.claims:
         for source_id in claim.sources:
-            if source_id not in cited:
+            if source_id not in seen:
+                seen.add(source_id)
                 cited.append(source_id)
     return cited
 
