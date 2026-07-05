@@ -5,3 +5,4 @@ __pycache__/
 .remember/
 .DS_Store
 .env
+.superpowers/
