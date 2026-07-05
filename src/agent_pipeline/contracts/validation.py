@@ -3,6 +3,8 @@
 ``BriefInput`` is A4's input contract -- the target vocabulary the A3->A4
 translator maps ``Draft`` into. ``ValidatedBrief`` is the pipeline's final output.
 """
+from typing import Annotated
+
 from pydantic import BaseModel, Field
 
 
@@ -30,7 +32,8 @@ class BriefInput(BaseModel):
     claims: list[Claim]
     body: str = Field(min_length=1)
     available_sources: list[str]
-    uncited_assertions: list[str] = []
+    # each entry is a section body (non-empty); an empty one would fail grounding on nothing
+    uncited_assertions: list[Annotated[str, Field(min_length=1)]] = []
 
 
 class ValidatedBrief(BaseModel):

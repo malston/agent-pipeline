@@ -196,3 +196,22 @@ def test_a4_run_gates_an_uncited_assertion():
     with pytest.raises(GuardrailViolation) as exc:
         A4Validator(StructuralClaimVerifier()).run(bi)
     assert exc.value.code == "GROUNDING_FAILED"
+
+
+def test_a4_check_unsupported_holds_both_a_failing_claim_and_an_uncited_assertion():
+    # unsupported must collect from both contributors at once -- a verifier-failed claim
+    # AND an uncited assertion -- so the fold is `+=`, not `=`.
+    bi = BriefInput(
+        request_id="r1",
+        claims=[
+            Claim(text="grounded claim", sources=["mito"]),
+            Claim(text="ungrounded claim", sources=["ghost"]),
+        ],
+        body="Some body.",
+        available_sources=["mito"],
+        uncited_assertions=["a floating assertion"],
+    )
+    outcome = A4Validator(StructuralClaimVerifier()).check(bi)
+    assert outcome.brief.checks.grounding_ok is False
+    assert "ungrounded claim" in outcome.unsupported  # verifier-failed claim
+    assert "a floating assertion" in outcome.unsupported  # uncited assertion

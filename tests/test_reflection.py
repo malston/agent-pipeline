@@ -169,3 +169,18 @@ def test_uncited_section_drives_the_loop_to_exhaustion():
         app.invoke(_initial(request), {"configurable": {"thread_id": "r1"}})
     assert exc.value.code == "GROUNDING_FAILED"
     assert composer.calls == MAX_COMPOSE_ATTEMPTS  # an uncited section can never ground
+
+
+def test_gaps_only_draft_ships_grounded_without_looping():
+    # the no-evidence path: an empty store -> analyst finds nothing -> a gaps-only draft
+    # (no sections, no claims, no uncited assertions) must ship grounded on the first pass,
+    # the symmetric complement of the uncited-section-loops-to-exhaustion case above.
+    composer = _CapturingComposer()
+    empty_store = KnowledgeStore(LocalEmbeddings())
+    app = _app(empty_store, A3Composer(composer), StructuralClaimVerifier())
+    request = RetrievalRequest(request_id="r1", raw_query="anything about bacteria?")
+    result = app.invoke(_initial(request), {"configurable": {"thread_id": "r1"}})
+
+    brief = result["brief"]
+    assert brief is not None and brief.checks.grounding_ok is True
+    assert len(composer.feedbacks) == 1  # composed once; gaps do not drive a recompose
