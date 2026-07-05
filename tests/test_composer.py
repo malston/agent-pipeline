@@ -5,7 +5,12 @@ The LLM-backed composer is exercised in test_a3_e2e.py, gated on a provider key.
 """
 import pytest
 
-from agent_pipeline.agents.composer import A3Composer, RuleBasedComposer, CompositionPlan
+from agent_pipeline.agents.composer import (
+    A3Composer,
+    RuleBasedComposer,
+    LLMComposer,
+    CompositionPlan,
+)
 from agent_pipeline.agents.plan import PlanStep
 from agent_pipeline.agents.guardrails import GuardrailViolation
 from agent_pipeline.contracts.composition import (
@@ -128,3 +133,52 @@ def test_a3_run_threads_feedback_to_the_composer():
     capturing = _CapturingComposer()
     A3Composer(capturing).run(_input(), feedback=["unsupported claim"])
     assert capturing.received == ["unsupported claim"]
+
+
+class _CapturingModel:
+    """Test double for the injected BaseChatModel. Records the messages
+    LLMComposer's prompt construction hands it, and returns a canned plan.
+
+    with_structured_output returns self, so LLMComposer.compose calls invoke on
+    this same object -- letting the test read back the human message it built.
+    """
+
+    def __init__(self):
+        self.messages = None
+
+    def with_structured_output(self, schema):
+        return self
+
+    def invoke(self, messages):
+        self.messages = messages
+        return CompositionPlan(
+            steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
+            sections=[Section(heading="H", body="B", cited_sources=["mito"])],
+            style_profile="x",
+        )
+
+
+def _human_message(model: _CapturingModel) -> str:
+    # compose sends [("system", SYSTEM), ("human", human)]
+    role, text = model.messages[1]
+    assert role == "human"
+    return text
+
+
+def test_llm_composer_formats_feedback_as_bullets_in_the_prompt():
+    model = _CapturingModel()
+    LLMComposer(model=model).compose(
+        _input(), feedback=["Mitochondria are the powerhouse.", "Plants eat sunlight."]
+    )
+
+    human = _human_message(model)
+    assert "- Mitochondria are the powerhouse." in human
+    assert "- Plants eat sunlight." in human
+    assert "were NOT supported" in human
+
+
+def test_llm_composer_omits_feedback_block_without_feedback():
+    model = _CapturingModel()
+    LLMComposer(model=model).compose(_input())
+
+    assert "were NOT supported" not in _human_message(model)
