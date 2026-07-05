@@ -37,7 +37,13 @@ Two forks, both settled during brainstorming:
 
 ## The change
 
-### Contracts (`contracts/composition.py`)
+Mechanism note: `Claim.sources` enforces `min_length=1` (a Claim is a grounding
+_attempt_, defended by `test_claim_requires_at_least_one_source`). We keep that
+invariant. Uncited prose is not a degenerate Claim — it is modeled as its own thing,
+an assertion with no grounding attempt, carried on a new `BriefInput` field. (The
+alternative, relaxing `Claim.sources`, was rejected to preserve the invariant.)
+
+### Contracts (`contracts/composition.py`, `contracts/validation.py`)
 
 - `Draft` gains `gaps: list[str] = []`. `sections` are content assertions only.
 - `Section.cited_sources` stays optional. An empty one is **permitted by the type but
@@ -46,6 +52,9 @@ Two forks, both settled during brainstorming:
   loop, contradicting decision 1. Update its comment: empty `cited_sources` marks an
   ungrounded assertion the A4 gate rejects (fed back to A3 to recompose); gaps that
   assert nothing live in `Draft.gaps`, not sections.
+- `BriefInput` gains `uncited_assertions: list[str] = []` — the texts of content
+  sections that cite nothing (assertions with no grounding attempt). `Claim` is
+  unchanged.
 
 ### Composer output (`contracts` + `agents/composer.py`)
 
@@ -60,21 +69,22 @@ style_profile=plan.style_profile)`.
 
 ### The fix (`translators/draft_to_validation.py` + `agents/validator.py`)
 
-- `translate_draft_to_validation`: extract a claim from **every** section (remove the
-  `if section.cited_sources` filter). Render `draft.gaps` into the shipped `body`
-  under an "Open questions" block when non-empty, so the brief still surfaces gaps
-  (presentation only). `available_sources` (union of cited sources) unchanged.
-- Both verifiers: **a claim that cites no sources is ungrounded.**
-  - `StructuralClaimVerifier.verify`: `return bool(claim.sources) and set(claim.sources) <= available_sources`.
-  - `LLMClaimVerifier.verify`: `if not claim.sources: return False` before the subset
-    check (an empty set is a subset of anything, so today it passes).
+- `translate_draft_to_validation`: claims are built from sections that cite sources
+  (unchanged). Sections that cite nothing populate `uncited_assertions`
+  (`[s.body for s in draft.sections if not s.cited_sources]`). Render `draft.gaps` into
+  the shipped `body` under an "Open questions" block when non-empty, so the brief still
+  surfaces gaps (presentation only). `available_sources` unchanged.
+- `A4Validator.check`: fold the uncited assertions into the unsupported set —
+  `unsupported = [failing claim texts] + brief_input.uncited_assertions`; then
+  `grounding_ok = not unsupported`. An uncited assertion is trivially unsupported (it
+  made no grounding attempt), so no verifier change is needed.
 
 ### Data flow after the change
 
-An uncited content section → `Claim(text=body, sources=[])` → `verify` returns False
-→ text lands in `unsupported` → `grounding_ok=False` → the loop feeds the text back to
-A3 → recompose (cite or drop) → terminal gate. Gaps are never claims, so they ship in
-the body without blocking grounding.
+An uncited content section → `uncited_assertions` entry → included in `unsupported` →
+`grounding_ok=False` → the loop feeds the text back to A3 → recompose (cite or drop) →
+terminal gate. Gaps live in `Draft.gaps`, ship in the body, and are never assertions,
+so they do not block grounding.
 
 ## Invariants preserved
 
@@ -94,17 +104,19 @@ Failing test first, then minimal code, per task:
 1. **Headline:** a `Draft` with one grounded cited section plus one uncited content
    section carrying a fabricated claim must **not** pass A4 — `grounding_ok=False` and
    the uncited section's text in `unsupported`.
-2. **Verifiers:** `StructuralClaimVerifier` and `LLMClaimVerifier` each report a
-   claim with empty `sources` as ungrounded (the LLM one without calling the model).
-3. **Translator:** every section becomes a claim (cited or not); `gaps` render into
-   `body` but produce no claim.
+2. **Translator:** an uncited content section populates `uncited_assertions` (and is
+   not a claim); cited sections still become claims; `draft.gaps` render into `body`
+   and produce neither a claim nor an `uncited_assertion`.
+3. **check():** `uncited_assertions` fold into `unsupported`, so a brief with an
+   uncited assertion reports `grounding_ok=False`.
 4. **Composer:** `RuleBasedComposer` puts gaps in `Draft.gaps` (updated gaps-only test:
    `sections==[]`, `gaps==["..."]`); empty input still yields an empty draft.
 5. **Graph/reflection:** an uncited content section drives the loop and raises
    `GROUNDING_FAILED` at exhaustion (composer runs `MAX_COMPOSE_ATTEMPTS` times).
 
-Test output stays pristine. The gated LLM e2e (`test_a3_e2e`, key-guarded) exercises
-the new prompt/`gaps` field only with a provider key; never mocked.
+`Claim` and its `min_length=1` test are unchanged. Test output stays pristine. The
+gated LLM e2e (`test_a3_e2e`, key-guarded) exercises the new prompt/`gaps` field only
+with a provider key; never mocked.
 
 ## Non-goals
 
@@ -119,11 +131,13 @@ the new prompt/`gaps` field only with a provider key; never mocked.
 ## Files touched
 
 - `src/agent_pipeline/contracts/composition.py` — `Draft.gaps`, `Section` comment
+- `src/agent_pipeline/contracts/validation.py` — `BriefInput.uncited_assertions`
 - `src/agent_pipeline/agents/composer.py` — `CompositionPlan.gaps`, both composers,
   `A3Composer.run`
-- `src/agent_pipeline/translators/draft_to_validation.py` — claims from every section,
-  gaps into body
-- `src/agent_pipeline/agents/validator.py` — empty-sources rule in both verifiers
-- Tests: `test_validator.py`, `test_composer.py`, `test_reflection.py`, and a
-  translator test
+- `src/agent_pipeline/translators/draft_to_validation.py` — `uncited_assertions` from
+  uncited sections, gaps into body
+- `src/agent_pipeline/agents/validator.py` — fold `uncited_assertions` into `unsupported`
+  in `check()`
+- Tests: `test_validation_contracts.py`, `test_draft_to_validation.py`,
+  `test_validator.py`, `test_composer.py`, `test_reflection.py`
 - Docs: `DESIGN.md` grounding note; close `#19`
