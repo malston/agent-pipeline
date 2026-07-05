@@ -4,7 +4,7 @@ The composer turns the points A2 supplied into a drafted deliverable. Two
 composers share one seam:
 
 * ``RuleBasedComposer`` -- keyless, deterministic stand-in; one section per point
-  citing that point's sources, plus an "Open questions" section when gaps exist.
+  citing that point's sources, with gaps carried through to the draft's gaps.
   Lets the agent run with no provider.
 * ``LLMComposer`` -- provider-agnostic (build_model seam); the real Model. Needs a
   provider key, so it is exercised only by the gated end-to-end test.
@@ -34,6 +34,7 @@ class CompositionPlan(BaseModel):
 
     steps: list[PlanStep]
     sections: list[Section]
+    gaps: list[str] = []
     style_profile: str
 
 
@@ -44,8 +45,8 @@ class Composer(Protocol):
 
 
 class RuleBasedComposer:
-    """Keyless stand-in: one section per point citing that point's sources, plus an
-    "Open questions" section when the input has gaps."""
+    """Keyless stand-in: one section per point citing that point's sources; the input
+    gaps carry through to the draft's gaps."""
 
     def compose(
         self, composer_input: ComposerInput, feedback: list[str] | None = None
@@ -58,13 +59,10 @@ class RuleBasedComposer:
             )
             for i, point in enumerate(composer_input.points)
         ]
-        if composer_input.gaps:
-            sections.append(
-                Section(heading="Open questions", body="\n".join(composer_input.gaps))
-            )
         return CompositionPlan(
             steps=[PlanStep(step_id=0, intent="emit the draft", tool="emit_contract")],
             sections=sections,
+            gaps=composer_input.gaps,
             style_profile="outline",
         )
 
@@ -81,9 +79,10 @@ class LLMComposer:
         "even if you believe them true -- any added detail will be rejected by the "
         "downstream grounding check. A section that draws on points cites ONLY those "
         "points' source ids, and every sentence in it must be supported by those "
-        "cited points. Put any unanswered gaps in a final section that cites NO "
-        "sources (empty cited_sources) and lists the given gaps without adding "
-        "explanation. Pick a concise style_profile. You have no retrieval tools: "
+        "cited points. List any unanswered gaps in the gaps field as plain strings "
+        "(do not invent gaps); do not put them in a section. Every section must cite "
+        "the source ids it draws on. Pick a concise style_profile. You have no "
+        "retrieval tools: "
         "produce a plan whose single step uses the tool emit_contract."
     )
 
@@ -128,6 +127,7 @@ class A3Composer:
                 draft = Draft(
                     request_id=composer_input.request_id,
                     sections=plan.sections,
+                    gaps=plan.gaps,
                     style_profile=plan.style_profile,
                 )
                 validate_composition_output(draft, available)  # guardrail

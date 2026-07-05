@@ -77,8 +77,19 @@ def test_a3_emits_empty_draft_for_empty_input():
 def test_a3_composes_gaps_only_input():
     gaps_only = ComposerInput(request_id="r1", points=[], gaps=["no data on bacteria"])
     draft = A3Composer(RuleBasedComposer()).run(gaps_only)
-    assert [s.heading for s in draft.sections] == ["Open questions"]
-    assert draft.sections[0].cited_sources == []
+    assert draft.sections == []
+    assert draft.gaps == ["no data on bacteria"]
+
+
+def test_a3_carries_gaps_onto_the_draft():
+    ci = ComposerInput(
+        request_id="r1",
+        points=[Point(statement="Cells make ATP", sources=["mito"], confidence=0.9)],
+        gaps=["nothing on bacteria"],
+    )
+    draft = A3Composer(RuleBasedComposer()).run(ci)
+    assert draft.gaps == ["nothing on bacteria"]
+    assert [s.heading for s in draft.sections] == ["Point 1"]  # no "Open questions" section
 
 
 def test_a3_rejects_composer_that_drops_all_content():

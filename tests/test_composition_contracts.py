@@ -52,6 +52,11 @@ def test_draft_json_round_trip():
     assert restored == draft
 
 
+def test_draft_carries_gaps():
+    draft = Draft(request_id="r1", sections=[], gaps=["no data on X"], style_profile="x")
+    assert draft.gaps == ["no data on X"]
+
+
 def test_composer_input_carries_points_and_gaps():
     ci = ComposerInput(
         request_id="r1",

@@ -35,6 +35,30 @@ def test_brief_input_carries_claims_body_and_available_sources():
     assert bi.available_sources == ["mito", "photo"]
 
 
+def test_brief_input_rejects_empty_uncited_assertion():
+    # an empty-string "assertion" would put "" into unsupported and fail grounding on
+    # nothing; uncited assertions are section bodies, which are always non-empty
+    with pytest.raises(ValidationError):
+        BriefInput(
+            request_id="r1",
+            claims=[Claim(text="cells make ATP", sources=["mito"])],
+            body="Cells make ATP.",
+            available_sources=["mito"],
+            uncited_assertions=[""],
+        )
+
+
+def test_brief_input_carries_uncited_assertions():
+    bi = BriefInput(
+        request_id="r1",
+        claims=[Claim(text="cells make ATP", sources=["mito"])],
+        body="Cells make ATP.",
+        available_sources=["mito"],
+        uncited_assertions=["a section that cites nothing"],
+    )
+    assert bi.uncited_assertions == ["a section that cites nothing"]
+
+
 def test_validated_brief_rejects_empty_body():
     with pytest.raises(ValidationError):
         ValidatedBrief(

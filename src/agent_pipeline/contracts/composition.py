@@ -23,18 +23,19 @@ class ComposerInput(BaseModel):
 
 
 class Section(BaseModel):
-    """A section of the draft; may cite the sources it draws on."""
+    """A section of the draft: an assertion, with the source ids that support it."""
 
     heading: str = Field(min_length=1)
     body: str = Field(min_length=1)
-    # source ids; may be empty on purpose -- intro/gaps sections cite nothing (unlike
-    # Finding.evidence, a section carries no obligation to cite)
+    # source ids; empty marks an assertion with no grounding attempt, which A4 rejects
+    # (fed back to A3 to recompose). Gaps that assert nothing live in Draft.gaps, not here.
     cited_sources: list[str] = []
 
 
 class Draft(BaseModel):
-    """A3's output: the composed sections plus the style they follow."""
+    """A3's output: the composed sections, the acknowledged gaps, and the style."""
 
     request_id: str
     sections: list[Section]
+    gaps: list[str] = []
     style_profile: str = Field(min_length=1)

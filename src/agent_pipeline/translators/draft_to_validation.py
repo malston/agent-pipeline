@@ -1,9 +1,10 @@
 """Context Translation for the A3 -> A4 boundary.
 
-Maps the composition vocabulary (draft of sections) into the validation vocabulary
-(claims to verify + an assembled body + the available source ids). A cited section
-becomes a claim; an uncited section (intro/gaps) still contributes to the body but
-is nothing to verify. Deterministic and Model-free.
+Maps the composition vocabulary (draft of sections + gaps) into the validation
+vocabulary. A cited section becomes a claim; a section that cites nothing becomes an
+uncited assertion (ungrounded -- no grounding attempt). The section text and the gaps
+assemble into the body; cited source ids become the available-sources set.
+Deterministic and Model-free.
 """
 from agent_pipeline.contracts.composition import Draft
 from agent_pipeline.contracts.validation import BriefInput, Claim
@@ -15,6 +16,9 @@ def translate_draft_to_validation(draft: Draft) -> BriefInput:
         for section in draft.sections
         if section.cited_sources
     ]
+    uncited_assertions = [
+        section.body for section in draft.sections if not section.cited_sources
+    ]
 
     available: list[str] = []
     seen: set[str] = set()
@@ -24,13 +28,15 @@ def translate_draft_to_validation(draft: Draft) -> BriefInput:
                 seen.add(source_id)
                 available.append(source_id)
 
-    body = "\n\n".join(
-        f"## {section.heading}\n{section.body}" for section in draft.sections
-    )
+    parts = [f"## {section.heading}\n{section.body}" for section in draft.sections]
+    if draft.gaps:
+        parts.append("## Open questions\n" + "\n".join(f"- {gap}" for gap in draft.gaps))
+    body = "\n\n".join(parts)
 
     return BriefInput(
         request_id=draft.request_id,
         claims=claims,
         body=body,
         available_sources=available,
+        uncited_assertions=uncited_assertions,
     )

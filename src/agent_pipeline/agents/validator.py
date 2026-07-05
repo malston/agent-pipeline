@@ -160,6 +160,8 @@ class A4Validator:
                     for claim in brief_input.claims
                     if not self._verifier.verify(claim, available)
                 ]
+                # Sections that cite nothing made no grounding attempt -- trivially unsupported.
+                unsupported += brief_input.uncited_assertions
             elif step.tool == "emit_contract":
                 body_folded = brief_input.body.casefold()
                 brief = ValidatedBrief(
