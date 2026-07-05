@@ -6,14 +6,21 @@ are deterministic. The gate rejects any brief with a failed check. The semantic
 LLM verifier is exercised in test_a4_e2e.py, gated on a provider key.
 """
 import pytest
+from pydantic import ValidationError
 
 from agent_pipeline.agents.validator import (
     A4Validator,
     StructuralClaimVerifier,
     LLMClaimVerifier,
+    ValidationOutcome,
 )
 from agent_pipeline.agents.guardrails import GuardrailViolation
-from agent_pipeline.contracts.validation import Claim, BriefInput, ValidatedBrief
+from agent_pipeline.contracts.validation import (
+    Claim,
+    BriefInput,
+    ValidatedBrief,
+    ValidationChecks,
+)
 
 
 def _input(claim_sources=("mito",), available=("mito", "photo"), body="Cells make ATP."):
@@ -137,3 +144,29 @@ def test_a4_check_propagates_source_unresolved():
     with pytest.raises(GuardrailViolation) as exc:
         A4Validator(_UnresolvedVerifier()).check(_input())
     assert exc.value.code == "SOURCE_UNRESOLVED"
+
+
+def _brief(grounding_ok: bool) -> ValidatedBrief:
+    return ValidatedBrief(
+        request_id="r1",
+        body="Cells make ATP.",
+        citations=["mito"],
+        checks=ValidationChecks(grounding_ok=grounding_ok, policy_ok=True, format_ok=True),
+    )
+
+
+def test_validation_outcome_rejects_grounded_brief_with_unsupported_claims():
+    # grounding_ok True but a non-empty witness set is a self-contradiction the loop
+    # would misread (route to the gate while still feeding claims back to A3).
+    with pytest.raises(ValidationError):
+        ValidationOutcome(brief=_brief(grounding_ok=True), unsupported=["x"])
+
+
+def test_validation_outcome_rejects_ungrounded_brief_with_no_unsupported_claims():
+    with pytest.raises(ValidationError):
+        ValidationOutcome(brief=_brief(grounding_ok=False), unsupported=[])
+
+
+def test_validation_outcome_accepts_the_two_consistent_states():
+    ValidationOutcome(brief=_brief(grounding_ok=True), unsupported=[])
+    ValidationOutcome(brief=_brief(grounding_ok=False), unsupported=["x"])

@@ -79,11 +79,23 @@ def build_graph(
         return {"brief": outcome.brief, "feedback": outcome.unsupported}
 
     def gate_node(state: PipelineState) -> dict:
-        validate_brief_output(state["brief"])  # raises if any check still fails
+        brief = state["brief"]
+        if brief is None:
+            raise ValueError(
+                "gate_node reached with no brief; "
+                "A4 did not populate state['brief']"
+            )
+        validate_brief_output(brief)  # raises if any check still fails
         return {}
 
     def route(state: PipelineState) -> str:
-        if state["brief"].checks.grounding_ok or state["attempt"] >= MAX_COMPOSE_ATTEMPTS:
+        brief = state["brief"]
+        if brief is None:
+            raise ValueError(
+                "route reached with no brief; "
+                "A4 did not populate state['brief']"
+            )
+        if brief.checks.grounding_ok or state["attempt"] >= MAX_COMPOSE_ATTEMPTS:
             return "gate"
         return "composer"
 

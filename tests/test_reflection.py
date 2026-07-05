@@ -11,10 +11,12 @@ from agent_pipeline.tools.knowledge import KnowledgeStore
 from agent_pipeline.graph.pipeline import build_graph
 from agent_pipeline.agents.retriever import A1Retriever, RuleBasedPlanner
 from agent_pipeline.agents.analyst import A2Analyst, RuleBasedAnalyst
-from agent_pipeline.agents.composer import A3Composer, RuleBasedComposer
+from agent_pipeline.agents.composer import A3Composer, RuleBasedComposer, CompositionPlan
+from agent_pipeline.agents.plan import PlanStep
 from agent_pipeline.agents.validator import A4Validator
 from agent_pipeline.agents.guardrails import GuardrailViolation
 from agent_pipeline.contracts.retrieval import RetrievalRequest
+from agent_pipeline.contracts.composition import Section
 
 def _one_doc_store():
     store = KnowledgeStore(LocalEmbeddings())
@@ -84,3 +86,60 @@ def test_loop_raises_after_max_attempts():
     with pytest.raises(GuardrailViolation) as exc:
         app.invoke(_initial(request), {"configurable": {"thread_id": "r1"}})
     assert exc.value.code == "GROUNDING_FAILED"
+
+
+class _SourceUnresolvedVerifier:
+    """Raises the infra fault a missing-document verifier would raise."""
+
+    def verify(self, claim, available_sources):
+        raise GuardrailViolation("SOURCE_UNRESOLVED", "cited source missing from store")
+
+
+def test_source_unresolved_aborts_the_run_without_looping():
+    # SOURCE_UNRESOLVED is an infra fault, not a grounding failure: recomposing cannot
+    # add a missing document, so check() must let it propagate out of the graph rather
+    # than feed it back as a retry. Proven here through the graph, not just check().
+    composer = _CapturingComposer()
+    app = _app(_one_doc_store(), A3Composer(composer), _SourceUnresolvedVerifier())
+    request = RetrievalRequest(request_id="r1", raw_query="how do cells make energy?")
+    with pytest.raises(GuardrailViolation) as exc:
+        app.invoke(_initial(request), {"configurable": {"thread_id": "r1"}})
+    assert exc.value.code == "SOURCE_UNRESOLVED"
+    assert len(composer.feedbacks) == 1  # composed once; the fault did not drive a retry
+
+
+class _PassVerifier:
+    def verify(self, claim, available_sources):
+        return True
+
+
+class _BannedPhraseComposer:
+    """Emits one grounded section whose body carries a banned phrase."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def compose(self, composer_input, feedback=None):
+        self.calls += 1
+        return CompositionPlan(
+            steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
+            sections=[Section(heading="H", body="Cells make ATP; forbidden.", cited_sources=["mito"])],
+            style_profile="plain",
+        )
+
+
+def test_policy_failure_routes_to_the_gate_without_looping():
+    # route() keys only on grounding; a grounded-but-policy-failing brief must fall
+    # straight through to the gate and raise, never spin the recompose loop.
+    composer = _BannedPhraseComposer()
+    app = build_graph(
+        A1Retriever(_one_doc_store(), RuleBasedPlanner()),
+        A2Analyst(RuleBasedAnalyst()),
+        A3Composer(composer),
+        A4Validator(_PassVerifier(), banned_phrases=frozenset({"forbidden"})),
+    )
+    request = RetrievalRequest(request_id="r1", raw_query="how do cells make energy?")
+    with pytest.raises(GuardrailViolation) as exc:
+        app.invoke(_initial(request), {"configurable": {"thread_id": "r1"}})
+    assert exc.value.code == "POLICY_FAILED"
+    assert composer.calls == 1  # policy failure did not trigger the recompose loop

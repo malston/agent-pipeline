@@ -3,6 +3,11 @@
 A4 is the terminal gate: it verifies each claim against its cited sources, applies
 policy and format checks, and refuses to emit a brief that fails any of them.
 
+A4 has two entry points. check() reports the outcome -- the brief plus the claim
+texts judged unsupported -- without raising, so the reflection loop can recompose on
+a grounding failure. run() wraps check() with the hard gate, raising on any failed
+check. The graph drives the loop with check(); run() is A4's standalone gate.
+
 Unlike A1-A3, A4's plan is Harness-built ([check_claim, emit_contract]) rather than
 Model-generated: A4's Model contribution is the per-claim *verification*, not
 planning. Two verifiers share one seam:
@@ -16,7 +21,7 @@ planning. Two verifiers share one seam:
 from typing import Protocol
 
 from langchain_core.language_models import BaseChatModel
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from agent_pipeline.agents.plan import Plan, PlanStep
 from agent_pipeline.agents.guardrails import (
@@ -99,10 +104,25 @@ def _cited_sources(brief_input: BriefInput) -> list[str]:
 
 
 class ValidationOutcome(BaseModel):
-    """A4's report-mode result: the brief plus the claim texts judged unsupported."""
+    """A4's report-mode result: the brief plus the claim texts judged unsupported.
+
+    unsupported is the witness set for the grounding verdict, not an independent
+    datum: it is empty iff brief.checks.grounding_ok. The reflection loop routes on
+    grounding_ok while forwarding unsupported as feedback, so the two must agree.
+    """
 
     brief: ValidatedBrief
     unsupported: list[str]
+
+    @model_validator(mode="after")
+    def _grounding_matches_unsupported(self) -> "ValidationOutcome":
+        if bool(self.unsupported) == self.brief.checks.grounding_ok:
+            raise ValueError(
+                "grounding_ok must be True iff unsupported is empty; got "
+                f"grounding_ok={self.brief.checks.grounding_ok}, "
+                f"unsupported={self.unsupported!r}"
+            )
+        return self
 
 
 class A4Validator:
