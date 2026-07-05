@@ -105,3 +105,35 @@ def test_a4_gates_malformed_body():
     with pytest.raises(GuardrailViolation) as exc:
         A4Validator(StructuralClaimVerifier()).run(_input(body="   "))
     assert exc.value.code == "FORMAT_FAILED"
+
+
+def test_a4_check_reports_unsupported_without_raising():
+    # a claim citing a source outside the pool is unsupported (structural verifier)
+    bi = BriefInput(
+        request_id="r1",
+        claims=[
+            Claim(text="grounded claim", sources=["mito"]),
+            Claim(text="ungrounded claim", sources=["ghost"]),
+        ],
+        body="Some body.",
+        available_sources=["mito", "photo"],
+    )
+    outcome = A4Validator(StructuralClaimVerifier()).check(bi)
+    assert outcome.brief.checks.grounding_ok is False
+    assert outcome.unsupported == ["ungrounded claim"]  # only the failing claim's text
+
+
+def test_a4_check_reports_grounded_for_a_good_brief():
+    outcome = A4Validator(StructuralClaimVerifier()).check(_input())
+    assert outcome.brief.checks.grounding_ok is True
+    assert outcome.unsupported == []
+
+
+def test_a4_check_propagates_source_unresolved():
+    class _UnresolvedVerifier:
+        def verify(self, claim, available_sources):
+            raise GuardrailViolation("SOURCE_UNRESOLVED", "missing doc")
+
+    with pytest.raises(GuardrailViolation) as exc:
+        A4Validator(_UnresolvedVerifier()).check(_input())
+    assert exc.value.code == "SOURCE_UNRESOLVED"

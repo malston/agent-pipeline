@@ -98,6 +98,13 @@ def _cited_sources(brief_input: BriefInput) -> list[str]:
     return cited
 
 
+class ValidationOutcome(BaseModel):
+    """A4's report-mode result: the brief plus the claim texts judged unsupported."""
+
+    brief: ValidatedBrief
+    unsupported: list[str]
+
+
 class A4Validator:
     def __init__(
         self,
@@ -112,8 +119,9 @@ class A4Validator:
         self._banned = frozenset(p.casefold() for p in banned_phrases)
         self._max_steps = max_plan_steps
 
-    def run(self, brief_input: BriefInput) -> ValidatedBrief:
-        # A4's plan is Harness-built: verify every claim, then emit.
+    def check(self, brief_input: BriefInput) -> ValidationOutcome:
+        # A4's plan is Harness-built: verify every claim, then emit. This is the report
+        # mode -- it records failed checks but does not raise (the loop needs to retry).
         plan = Plan(
             steps=[
                 PlanStep(step_id=0, intent="verify claims", tool="check_claim"),
@@ -123,15 +131,15 @@ class A4Validator:
         validate_plan(plan, A4_TOOL_GRANT, self._max_steps)  # guardrail
 
         available = set(brief_input.available_sources)
-        grounding_ok = True
+        unsupported: list[str] = []
         for step in plan.steps:  # EXECUTE
             if step.tool == "check_claim":
-                # Vacuously true for a claim-less brief (nothing to verify): A4
-                # grounds the claims it extracts; uncited prose is the composer's job.
-                grounding_ok = all(
-                    self._verifier.verify(claim, available)
+                # A verifier may raise SOURCE_UNRESOLVED (infra fault) -- let it propagate.
+                unsupported = [
+                    claim.text
                     for claim in brief_input.claims
-                )
+                    if not self._verifier.verify(claim, available)
+                ]
             elif step.tool == "emit_contract":
                 body_folded = brief_input.body.casefold()
                 brief = ValidatedBrief(
@@ -139,12 +147,16 @@ class A4Validator:
                     body=brief_input.body,
                     citations=_cited_sources(brief_input),
                     checks=ValidationChecks(
-                        grounding_ok=grounding_ok,
+                        grounding_ok=not unsupported,
                         policy_ok=not any(p in body_folded for p in self._banned),
                         format_ok=bool(brief_input.body.strip()),
                     ),
                 )
-                validate_brief_output(brief)  # the gate
-                return brief
+                return ValidationOutcome(brief=brief, unsupported=unsupported)
         # Unreachable: validate_plan guarantees a terminal emit_contract.
         raise GuardrailViolation("NO_EMIT", "plan executed without emitting a contract")
+
+    def run(self, brief_input: BriefInput) -> ValidatedBrief:
+        outcome = self.check(brief_input)
+        validate_brief_output(outcome.brief)  # the standalone hard gate
+        return outcome.brief
