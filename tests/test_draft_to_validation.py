@@ -5,9 +5,21 @@ assertions (ungrounded, with no grounding attempt); the assembled section text p
 the acknowledged gaps become the brief body; cited source ids become the
 available-sources set. Deterministic, Model-free.
 """
+import pytest
+
 from agent_pipeline.contracts.composition import Draft, Section
 from agent_pipeline.contracts.validation import BriefInput
+from agent_pipeline.agents.guardrails import GuardrailViolation
 from agent_pipeline.translators.draft_to_validation import translate_draft_to_validation
+
+
+def test_empty_everything_draft_raises_empty_brief():
+    # no sections and no gaps -> there is nothing to validate; fail with a domain-typed
+    # guardrail rather than a generic pydantic error on the empty body.
+    draft = Draft(request_id="r1", sections=[], gaps=[], style_profile="concise")
+    with pytest.raises(GuardrailViolation) as exc:
+        translate_draft_to_validation(draft)
+    assert exc.value.code == "EMPTY_BRIEF"
 
 
 def _draft():

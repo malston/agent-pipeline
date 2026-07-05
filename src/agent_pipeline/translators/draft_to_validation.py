@@ -8,9 +8,17 @@ Deterministic and Model-free.
 """
 from agent_pipeline.contracts.composition import Draft
 from agent_pipeline.contracts.validation import BriefInput, Claim
+from agent_pipeline.agents.guardrails import GuardrailViolation
 
 
 def translate_draft_to_validation(draft: Draft) -> BriefInput:
+    if not draft.sections and not draft.gaps:
+        # nothing to ground and nothing to acknowledge -- the body would be empty; fail
+        # with a domain-typed guardrail, not a generic pydantic error on BriefInput.body.
+        raise GuardrailViolation(
+            "EMPTY_BRIEF", "draft has no sections and no gaps -- nothing to validate"
+        )
+
     claims = [
         Claim(text=section.body, sources=section.cited_sources)
         for section in draft.sections
