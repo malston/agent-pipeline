@@ -30,15 +30,16 @@ generator A3 + critic A4):
 
 1. `composer_node` runs A3 with the current `feedback` (empty on the first pass).
 2. `validator_node` runs `A4.check()` — the **report** mode: it computes the checks and
-   returns the brief plus the claim texts the verifier judged unsupported, **without
-   raising**.
+   returns the brief plus the unsupported texts — claims the verifier rejected, plus any
+   section that cites nothing (an uncited assertion, which made no grounding attempt) —
+   **without raising**.
 3. The conditional edge routes: if the brief is grounded, or `attempt >= 3`, go to the
-   `gate`; otherwise loop back to A3 with the unsupported claims as `feedback`.
+   `gate`; otherwise loop back to A3 with the unsupported texts as `feedback`.
 4. `gate` runs `validate_brief_output`, which raises `GROUNDING_FAILED` (or
    `POLICY_FAILED` / `FORMAT_FAILED`) if any check still fails, else passes to `end`.
 
 A1 and A2 run once; only A3 ⇄ A4 iterate. State carried around the loop: `feedback`
-(unsupported claim texts) and `attempt` (the compose count, capped by
+(unsupported texts) and `attempt` (the compose count, capped by
 `MAX_COMPOSE_ATTEMPTS = 3`).
 
 The loop raises reliability without weakening the gate — a brief only reaches `end` when

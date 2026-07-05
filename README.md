@@ -19,7 +19,11 @@ topology, including the A3 &#8646; A4 reflection loop.
   A4 Validator, wired `A1 -> A2 -> A3 -> A4` with a Context Translator on every edge and
   guardrails on every output.
 - An eval harness scores retrieval and citation quality, with results bound to trace ids.
-- In progress: the A3 &#8646; A4 reflection loop (see the graph above).
+- The A3 &#8646; A4 reflection loop: A4 reports unsupported claims, A3 recomposes with that
+  feedback up to a cap, then a terminal gate raises if any check still fails (see the graph
+  above).
+- Grounding covers the whole shipped body: a section that cites nothing is an uncited
+  assertion that fails grounding and feeds the loop; acknowledged gaps live in `Draft.gaps`.
 
 ## Layout
 

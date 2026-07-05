@@ -431,12 +431,19 @@ proof.
   in-memory LangGraph checkpointer.
 - Eval harness (#5): retrieval recall@k / MRR and system-scope citation recall/precision,
   every score bound to a per-run trace id; golden datasets live in `tests/`.
+- A3 ⇄ A4 reflection loop (#17): A4 reports the unsupported claims, A3 recomposes with that
+  feedback up to `MAX_COMPOSE_ATTEMPTS`, then the terminal gate raises. See
+  [docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md).
+- Body-grounding (#19): A4 grounds every section that ships. A section citing nothing is an
+  uncited assertion that fails grounding and feeds the loop; acknowledged gaps live in
+  `Draft.gaps` and are not assertions.
 
-**In progress:**
+**In review / in progress:**
 
-- A3 ⇄ A4 reflection loop — recompose on grounding failure with per-claim feedback, up to
-  `MAX_COMPOSE_ATTEMPTS`, then raise (this branch; see
-  [docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md)).
+- Typed `EMPTY_BRIEF` guard so an empty-everything draft fails as a domain guardrail rather
+  than a generic Pydantic error (#21).
+- Gaps-channel hardening (#22): a gap A2 never reported is folded into the uncited
+  assertions and fails grounding, closing gap-stuffing (this branch).
 
 **Open (key/service-gated, tracked in #6):**
 
