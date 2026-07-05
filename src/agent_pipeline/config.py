@@ -43,6 +43,16 @@ A3_TOOL_GRANT = {"emit_contract"}
 
 A3_MAX_PLAN_STEPS = 6
 
+# A4 Validator's Context Boundary: it verifies each claim against its cited sources
+# (check_claim) and gates the brief; it is the only agent granted check_claim.
+A4_TOOL_GRANT = {"check_claim", "emit_contract"}
+
+A4_MAX_PLAN_STEPS = 6
+
+# Phrases the validator's policy check rejects in the brief body. Empty by default
+# (permissive); set to enforce a content policy.
+A4_BANNED_PHRASES: frozenset[str] = frozenset()
+
 # Default provider-agnostic Model id ("provider:model" for init_chat_model).
 # The single source of truth for the default; build_model() applies the MODEL_ID
 # env override at call time. Shared across agents; reasoning-capable by default.
