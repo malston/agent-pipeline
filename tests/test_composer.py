@@ -46,7 +46,7 @@ def test_a3_produces_grounded_draft_end_to_end():
 
 def test_a3_rejects_plan_using_ungranted_tool():
     class _RetrievingComposer:
-        def compose(self, composer_input: ComposerInput) -> CompositionPlan:
+        def compose(self, composer_input: ComposerInput, feedback=None) -> CompositionPlan:
             return CompositionPlan(
                 steps=[
                     PlanStep(step_id=0, intent="retrieve", tool="search_knowledge"),
@@ -80,7 +80,7 @@ def test_a3_rejects_composer_that_drops_all_content():
     # Points were supplied but the composer emitted no sections -- a dropped-content
     # defect, rejected loudly rather than passed off as an empty deliverable.
     class _DroppingComposer:
-        def compose(self, composer_input: ComposerInput) -> CompositionPlan:
+        def compose(self, composer_input: ComposerInput, feedback=None) -> CompositionPlan:
             return CompositionPlan(
                 steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
                 sections=[],
@@ -94,7 +94,7 @@ def test_a3_rejects_composer_that_drops_all_content():
 
 def test_a3_rejects_fabricated_citation():
     class _FabricatingComposer:
-        def compose(self, composer_input: ComposerInput) -> CompositionPlan:
+        def compose(self, composer_input: ComposerInput, feedback=None) -> CompositionPlan:
             return CompositionPlan(
                 steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
                 sections=[Section(heading="H", body="B", cited_sources=["ghost"])],
@@ -104,3 +104,27 @@ def test_a3_rejects_fabricated_citation():
     with pytest.raises(GuardrailViolation) as exc:
         A3Composer(_FabricatingComposer()).run(_input())
     assert exc.value.code == "UNGROUNDED_SECTION"
+
+
+def test_rule_based_composer_ignores_feedback():
+    # the keyless composer is already faithful; feedback must not change its output
+    ci = _input()
+    assert RuleBasedComposer().compose(ci, feedback=["anything"]) == RuleBasedComposer().compose(ci)
+
+
+def test_a3_run_threads_feedback_to_the_composer():
+    class _CapturingComposer:
+        def __init__(self):
+            self.received = "unset"
+
+        def compose(self, composer_input, feedback=None):
+            self.received = feedback
+            return CompositionPlan(
+                steps=[PlanStep(step_id=0, intent="emit", tool="emit_contract")],
+                sections=[Section(heading="H", body="B", cited_sources=["mito"])],
+                style_profile="x",
+            )
+
+    capturing = _CapturingComposer()
+    A3Composer(capturing).run(_input(), feedback=["unsupported claim"])
+    assert capturing.received == ["unsupported claim"]

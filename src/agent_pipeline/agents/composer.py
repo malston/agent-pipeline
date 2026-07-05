@@ -38,14 +38,18 @@ class CompositionPlan(BaseModel):
 
 
 class Composer(Protocol):
-    def compose(self, composer_input: ComposerInput) -> CompositionPlan: ...
+    def compose(
+        self, composer_input: ComposerInput, feedback: list[str] | None = None
+    ) -> CompositionPlan: ...
 
 
 class RuleBasedComposer:
     """Keyless stand-in: one section per point citing that point's sources, plus an
     "Open questions" section when the input has gaps."""
 
-    def compose(self, composer_input: ComposerInput) -> CompositionPlan:
+    def compose(
+        self, composer_input: ComposerInput, feedback: list[str] | None = None
+    ) -> CompositionPlan:
         sections = [
             Section(
                 heading=f"Point {i + 1}",
@@ -87,10 +91,18 @@ class LLMComposer:
         base = model if model is not None else build_model()
         self._model = base.with_structured_output(CompositionPlan)
 
-    def compose(self, composer_input: ComposerInput) -> CompositionPlan:
-        return self._model.invoke(
-            [("system", self._SYSTEM), ("human", composer_input.model_dump_json())]
-        )
+    def compose(
+        self, composer_input: ComposerInput, feedback: list[str] | None = None
+    ) -> CompositionPlan:
+        human = composer_input.model_dump_json()
+        if feedback:
+            human += (
+                "\n\nYour previous draft made these statements that were NOT supported "
+                "by their cited sources. Recompose stating only what the points assert; "
+                "drop or rephrase each of these:\n"
+                + "\n".join(f"- {statement}" for statement in feedback)
+            )
+        return self._model.invoke([("system", self._SYSTEM), ("human", human)])
 
 
 class A3Composer:
@@ -102,8 +114,10 @@ class A3Composer:
         self._composer = composer
         self._max_steps = max_plan_steps
 
-    def run(self, composer_input: ComposerInput) -> Draft:
-        plan = self._composer.compose(composer_input)  # PLAN (Model)
+    def run(
+        self, composer_input: ComposerInput, feedback: list[str] | None = None
+    ) -> Draft:
+        plan = self._composer.compose(composer_input, feedback)  # PLAN (Model)
         validate_plan(Plan(steps=plan.steps), A3_TOOL_GRANT, self._max_steps)  # guardrail
 
         available = {
