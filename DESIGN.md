@@ -88,8 +88,8 @@ Mitigations (all Harness):
   captured in the trace.
 
 **Reflection loop.** A3 ⇄ A4 form an ADD Reflection loop: when A4's grounding check
-rejects a section, the graph recomposes A3 with the unsupported claims as feedback, up
-to `MAX_COMPOSE_ATTEMPTS`, then raises. See
+rejects a section, the graph recomposes A3 with the unsupported texts (rejected claims
+plus any uncited assertions) as feedback, up to `MAX_COMPOSE_ATTEMPTS`, then raises. See
 [docs/architecture/pipeline-graph.md](docs/architecture/pipeline-graph.md).
 
 Grounding covers the emitted body, not just the cited claims: a content section that
@@ -441,11 +441,11 @@ proof.
 - Body-grounding (#19): A4 grounds every section that ships. A section citing nothing is an
   uncited assertion that fails grounding and feeds the loop; acknowledged gaps live in
   `Draft.gaps` and are not assertions.
+- Typed `EMPTY_BRIEF` guard (#21): an empty-everything draft fails as a domain guardrail
+  rather than a generic Pydantic error.
 
 **In review / in progress:**
 
-- Typed `EMPTY_BRIEF` guard so an empty-everything draft fails as a domain guardrail rather
-  than a generic Pydantic error (#21).
 - Gaps-channel hardening (#22): a gap A2 never reported is folded into the uncited
   assertions and fails grounding, closing gap-stuffing (this branch).
 

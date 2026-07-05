@@ -24,6 +24,8 @@ topology, including the A3 &#8646; A4 reflection loop.
   above).
 - Grounding covers the whole shipped body: a section that cites nothing is an uncited
   assertion that fails grounding and feeds the loop; acknowledged gaps live in `Draft.gaps`.
+  A gap A3 invents that A2 never reported is treated the same way, so the composer cannot
+  smuggle unverified prose through the gaps channel.
 
 ## Layout
 

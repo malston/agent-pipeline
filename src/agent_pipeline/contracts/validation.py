@@ -25,8 +25,8 @@ class ValidationChecks(BaseModel):
 
 class BriefInput(BaseModel):
     """A4's input: the claims to verify, the assembled body, the source ids
-    legitimately available to cite, and the texts of sections that cite nothing
-    (assertions with no grounding attempt)."""
+    legitimately available to cite, and the unbacked texts that made no grounding attempt
+    -- sections that cite nothing and gaps A3 invented (assertions to reject)."""
 
     request_id: str
     claims: list[Claim]

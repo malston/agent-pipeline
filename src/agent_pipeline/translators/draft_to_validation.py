@@ -24,6 +24,8 @@ def translate_draft_to_validation(draft: Draft, legitimate_gaps: list[str]) -> B
         for section in draft.sections
         if section.cited_sources
     ]
+    # legitimate_gaps must be A2's reported gaps (AnalysisReport.gaps), the same set A3 was
+    # given to echo; a gap outside it is one A3 invented, i.e. unbacked body text.
     known_gaps = set(legitimate_gaps)
     uncited_assertions = [
         section.body for section in draft.sections if not section.cited_sources

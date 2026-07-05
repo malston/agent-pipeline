@@ -30,9 +30,9 @@ generator A3 + critic A4):
 
 1. `composer_node` runs A3 with the current `feedback` (empty on the first pass).
 2. `validator_node` runs `A4.check()` — the **report** mode: it computes the checks and
-   returns the brief plus the unsupported texts — claims the verifier rejected, plus any
-   section that cites nothing (an uncited assertion, which made no grounding attempt) —
-   **without raising**.
+   returns the brief plus the unsupported texts — claims the verifier rejected, plus
+   anything that made no grounding attempt (a section that cites nothing, or a gap A2
+   never reported), each an uncited assertion — **without raising**.
 3. The conditional edge routes: if the brief is grounded, or `attempt >= 3`, go to the
    `gate`; otherwise loop back to A3 with the unsupported texts as `feedback`.
 4. `gate` runs `validate_brief_output`, which raises `GROUNDING_FAILED` (or
