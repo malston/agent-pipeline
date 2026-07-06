@@ -83,11 +83,16 @@ A standalone, offline script that reads the `claude-kb` repo files directly and 
 
 ## Metrics
 
-- **Flag rate** = unsupported / total claims
-- **Fabrication rate** = fabrications / total claims — _is there a problem?_
+Let **resolved claims** = claims whose cited source fetched — the verifiable set. Per step 2,
+`SOURCE_UNRESOLVED` claims are excluded from the flag and fabrication rates (you cannot judge
+fabrication without the source) and surface only in coverage. So the rate denominators below are
+resolved claims, not all claims:
+
+- **Flag rate** = unsupported / resolved claims
+- **Fabrication rate** = fabrications / resolved claims — _is there a problem?_
 - **Verifier precision** = (fabrication + drift) / flagged — _is the gate usable?_ (the
   load-bearing number)
-- **Coverage** = claims with a fetchable source / total claims
+- **Coverage** = resolved claims / total claims — the share of claims the pilot could verify at all
 
 Recall is not measured. Optional phase 2 for recall: inject 5–10 synthetic fabrications into
 copies of a few posts and measure catch rate.
