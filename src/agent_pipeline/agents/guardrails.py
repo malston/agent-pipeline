@@ -19,8 +19,9 @@ class GuardrailViolation(Exception):
 
 
 def validate_plan(plan: Plan, allowed_tools: set[str], max_steps: int) -> None:
-    """Reject plans that use ungranted tools, exceed the step budget, or fail to
-    terminate by emitting the contract."""
+    """Reject plans that use ungranted tools, exceed the step budget, fail to
+    terminate by emitting the contract, or emit the contract before the final step
+    (a premature emit short-circuits the executor, skipping the steps after it)."""
     if len(plan.steps) > max_steps:
         raise GuardrailViolation(
             "PLAN_TOO_LONG",
