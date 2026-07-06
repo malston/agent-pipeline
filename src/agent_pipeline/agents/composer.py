@@ -133,6 +133,13 @@ class A3Composer:
                 )
                 validate_composition_output(draft, available)  # guardrail
                 return draft
+            else:
+                # Granted by the plan gate but unhandled here: fail loudly rather than
+                # skip, so a grant/executor drift cannot silently drop a planned step.
+                raise GuardrailViolation(
+                    "UNHANDLED_STEP",
+                    f"step {step.step_id} calls '{step.tool}', granted but not handled by the executor",
+                )
         # Unreachable: validate_plan guarantees a terminal emit_contract. Defensive
         # backstop so a future weakening of that guard fails loudly, not silently.
         raise GuardrailViolation("NO_EMIT", "plan executed without emitting a contract")
