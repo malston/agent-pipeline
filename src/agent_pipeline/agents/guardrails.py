@@ -37,6 +37,13 @@ def validate_plan(plan: Plan, allowed_tools: set[str], max_steps: int) -> None:
             "MISSING_TERMINAL_EMIT",
             f"plan must end with '{TERMINAL_TOOL}'",
         )
+    for step in plan.steps[:-1]:
+        if step.tool == TERMINAL_TOOL:
+            raise GuardrailViolation(
+                "PREMATURE_EMIT",
+                f"step {step.step_id} emits before the plan terminates; the "
+                f"executor returns on the first '{TERMINAL_TOOL}', skipping later steps",
+            )
 
 
 def validate_retrieval_output(
