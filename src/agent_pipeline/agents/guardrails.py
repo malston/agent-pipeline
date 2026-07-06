@@ -19,8 +19,9 @@ class GuardrailViolation(Exception):
 
 
 def validate_plan(plan: Plan, allowed_tools: set[str], max_steps: int) -> None:
-    """Reject plans that use ungranted tools, exceed the step budget, or fail to
-    terminate by emitting the contract."""
+    """Reject plans that use ungranted tools, exceed the step budget, fail to
+    terminate by emitting the contract, or emit the contract before the final step
+    (a premature emit short-circuits the executor, skipping the steps after it)."""
     if len(plan.steps) > max_steps:
         raise GuardrailViolation(
             "PLAN_TOO_LONG",
@@ -37,6 +38,13 @@ def validate_plan(plan: Plan, allowed_tools: set[str], max_steps: int) -> None:
             "MISSING_TERMINAL_EMIT",
             f"plan must end with '{TERMINAL_TOOL}'",
         )
+    for step in plan.steps[:-1]:
+        if step.tool == TERMINAL_TOOL:
+            raise GuardrailViolation(
+                "PREMATURE_EMIT",
+                f"step {step.step_id} emits before the plan terminates; the "
+                f"executor returns on the first '{TERMINAL_TOOL}', skipping later steps",
+            )
 
 
 def validate_retrieval_output(

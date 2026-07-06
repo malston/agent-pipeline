@@ -40,6 +40,21 @@ def test_plan_rejects_missing_terminal_emit():
                       allowed_tools=ALLOWED, max_steps=5)
 
 
+def test_plan_rejects_nonterminal_emit():
+    # An emit before other steps short-circuits the executor (it returns on the
+    # first emit_contract), silently skipping retrieval. Reject it at the plan gate.
+    with pytest.raises(GuardrailViolation) as exc:
+        validate_plan(_plan("emit_contract", "search_knowledge", "emit_contract"),
+                      allowed_tools=ALLOWED, max_steps=5)
+    assert exc.value.code == "PREMATURE_EMIT"
+
+
+def test_plan_accepts_single_terminal_emit():
+    # A2/A3 emit exactly [emit_contract]; steps[:-1] is empty here, so the
+    # premature-emit gate must not reject a legitimate single-step plan.
+    validate_plan(_plan("emit_contract"), allowed_tools=ALLOWED, max_steps=5)  # no raise
+
+
 def test_plan_accepts_valid_plan():
     validate_plan(_plan("search_knowledge", "save_scratch", "emit_contract"),
                   allowed_tools=ALLOWED, max_steps=5)  # no raise
