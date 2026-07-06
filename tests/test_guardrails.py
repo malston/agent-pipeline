@@ -77,3 +77,12 @@ def test_output_accepts_grounded_bundle():
         coverage=0.9,
     )
     validate_retrieval_output(bundle, known_source_ids={"mito", "econ"})  # no raise
+
+
+def test_output_accepts_empty_bundle():
+    # A zero-hit retrieval is a legitimate "no evidence" result, not a fabrication:
+    # an empty bundle carries no citations to ground, so the gate passes it through.
+    bundle = RetrievalBundle(
+        request_id="r1", normalized_query="q", passages=[], coverage=0.0,
+    )
+    validate_retrieval_output(bundle, known_source_ids={"mito", "econ"})  # no raise
