@@ -111,6 +111,13 @@ class A1Retriever:
                 bundle = self._emit(request, plan, passages)
                 validate_retrieval_output(bundle, self._knowledge.known_ids())  # guardrail
                 return bundle
+            else:
+                # Granted by the plan gate but unhandled here: fail loudly rather than
+                # skip, so a grant/executor drift cannot silently drop a planned step.
+                raise GuardrailViolation(
+                    "UNHANDLED_STEP",
+                    f"step {step.step_id} calls '{step.tool}', granted but not handled by the executor",
+                )
         raise GuardrailViolation("NO_EMIT", "plan executed without emitting a contract")
 
     def _retrieve(self, plan: RetrievalPlan) -> list[Passage]:

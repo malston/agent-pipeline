@@ -66,6 +66,30 @@ def test_a3_rejects_plan_using_ungranted_tool():
     assert exc.value.code == "TOOL_NOT_GRANTED"
 
 
+def test_a3_raises_on_granted_but_unhandled_step(monkeypatch):
+    # Defense against grant/executor drift: a granted tool with no executor branch
+    # must fail loudly (UNHANDLED_STEP), never be silently skipped.
+    monkeypatch.setattr(
+        "agent_pipeline.agents.composer.A3_TOOL_GRANT",
+        {"emit_contract", "mystery_tool"},
+    )
+
+    class _UnhandledStepComposer:
+        def compose(self, composer_input: ComposerInput, feedback=None) -> CompositionPlan:
+            return CompositionPlan(
+                steps=[
+                    PlanStep(step_id=0, intent="mystery", tool="mystery_tool"),
+                    PlanStep(step_id=1, intent="emit", tool="emit_contract"),
+                ],
+                sections=[Section(heading="H", body="B", cited_sources=["mito"])],
+                style_profile="x",
+            )
+
+    with pytest.raises(GuardrailViolation) as exc:
+        A3Composer(_UnhandledStepComposer()).run(_input())
+    assert exc.value.code == "UNHANDLED_STEP"
+
+
 def test_a3_emits_empty_draft_for_empty_input():
     # A2 found nothing and flagged no gaps: composing "nothing to say" is honest,
     # not an error.

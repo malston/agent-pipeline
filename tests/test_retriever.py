@@ -86,3 +86,29 @@ def test_a1_rejects_plan_using_tool_the_executor_does_not_honor(
     with pytest.raises(GuardrailViolation) as exc:
         agent.run(sample_request)
     assert exc.value.code == "TOOL_NOT_GRANTED"
+
+
+def test_a1_raises_on_granted_but_unhandled_step(knowledge, sample_request, monkeypatch):
+    """Defense against grant/executor drift: a tool that is granted but has no
+    executor branch must fail loudly (UNHANDLED_STEP), never be silently skipped."""
+    monkeypatch.setattr(
+        "agent_pipeline.agents.retriever.A1_TOOL_GRANT",
+        {"search_knowledge", "save_scratch", "emit_contract", "mystery_tool"},
+    )
+
+    class _UnhandledStepPlanner:
+        def plan(self, request: RetrievalRequest) -> RetrievalPlan:
+            return RetrievalPlan(
+                normalized_query=request.raw_query,
+                search_queries=[request.raw_query],
+                k=4,
+                steps=[
+                    PlanStep(step_id=0, intent="mystery", tool="mystery_tool"),
+                    PlanStep(step_id=1, intent="emit", tool="emit_contract"),
+                ],
+            )
+
+    agent = A1Retriever(knowledge, _UnhandledStepPlanner())
+    with pytest.raises(GuardrailViolation) as exc:
+        agent.run(sample_request)
+    assert exc.value.code == "UNHANDLED_STEP"

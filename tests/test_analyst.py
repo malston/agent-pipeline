@@ -97,6 +97,30 @@ def test_a2_rejects_plan_that_uses_ungranted_tool():
     assert exc.value.code == "TOOL_NOT_GRANTED"
 
 
+def test_a2_raises_on_granted_but_unhandled_step(monkeypatch):
+    # Defense against grant/executor drift: a granted tool with no executor branch
+    # must fail loudly (UNHANDLED_STEP), never be silently skipped.
+    monkeypatch.setattr(
+        "agent_pipeline.agents.analyst.A2_TOOL_GRANT",
+        {"emit_contract", "mystery_tool"},
+    )
+
+    class _UnhandledStepAnalyst:
+        def analyze(self, analyst_input: AnalystInput) -> AnalysisPlan:
+            return AnalysisPlan(
+                steps=[
+                    PlanStep(step_id=0, intent="mystery", tool="mystery_tool"),
+                    PlanStep(step_id=1, intent="emit", tool="emit_contract"),
+                ],
+                findings=[Finding(claim="c", evidence=["mito"], confidence=0.5)],
+                gaps=[],
+            )
+
+    with pytest.raises(GuardrailViolation) as exc:
+        A2Analyst(_UnhandledStepAnalyst()).run(_input())
+    assert exc.value.code == "UNHANDLED_STEP"
+
+
 def test_a2_rejects_ungrounded_finding():
     class _FabricatingAnalyst:
         def analyze(self, analyst_input: AnalystInput) -> AnalysisPlan:

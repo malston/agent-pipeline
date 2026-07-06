@@ -175,6 +175,13 @@ class A4Validator:
                     ),
                 )
                 return ValidationOutcome(brief=brief, unsupported=unsupported)
+            else:
+                # Unreachable while the plan is Harness-built above; a defensive
+                # backstop so a granted-but-unhandled step fails loudly, not silently.
+                raise GuardrailViolation(
+                    "UNHANDLED_STEP",
+                    f"step {step.step_id} calls '{step.tool}', granted but not handled by the executor",
+                )
         # Unreachable: validate_plan guarantees a terminal emit_contract.
         raise GuardrailViolation("NO_EMIT", "plan executed without emitting a contract")
 
