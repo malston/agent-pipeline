@@ -44,6 +44,20 @@ def test_a1_writes_candidates_to_scoped_working_memory(knowledge, sample_request
     assert mem.load(sample_request.request_id, "candidates")
 
 
+def test_a1_emits_empty_bundle_for_no_hit_retrieval(local_embeddings, sample_request):
+    # An empty corpus yields a zero-hit retrieval. A1 emits a valid, empty bundle
+    # (coverage 0.0) that clears the grounding gate inside run() -- a legitimate
+    # "no evidence" result, not a failure. A2 later surfaces it as a "no evidence" gap.
+    from agent_pipeline.tools.knowledge import KnowledgeStore
+
+    empty_store = KnowledgeStore(local_embeddings)
+    bundle = A1Retriever(empty_store, RuleBasedPlanner()).run(sample_request)
+
+    assert isinstance(bundle, RetrievalBundle)
+    assert bundle.passages == []
+    assert bundle.coverage == 0.0
+
+
 def test_a1_rejects_plan_that_uses_ungranted_tool(knowledge, sample_request):
     class _UngrantedToolPlanner:
         def plan(self, request: RetrievalRequest) -> RetrievalPlan:

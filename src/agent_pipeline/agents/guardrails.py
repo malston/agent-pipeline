@@ -50,7 +50,9 @@ def validate_plan(plan: Plan, allowed_tools: set[str], max_steps: int) -> None:
 def validate_retrieval_output(
     bundle: RetrievalBundle, known_source_ids: set[str]
 ) -> None:
-    """Reject a bundle that cites a source A1 did not actually retrieve."""
+    """Reject a bundle that cites a source A1 did not actually retrieve. An empty
+    bundle is a legitimate no-evidence result (a zero-hit retrieval); it carries no
+    citations to ground and passes, and A2 surfaces it as a "no evidence" gap."""
     for passage in bundle.passages:
         if passage.source_id not in known_source_ids:
             raise GuardrailViolation(
